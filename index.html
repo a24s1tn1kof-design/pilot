@@ -3,276 +3,824 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>✈️ Симулятор пилота v2.0</title>
+<title>✈️ Pilot Simulator</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  body { font-family:'Courier New',monospace; background:#0a0e1a; color:#7fffd4; display:flex; height:100vh; overflow:hidden; touch-action:manipulation; }
-  #left { flex:1; display:flex; flex-direction:column; position:relative; }
-  #view { flex:1; position:relative; overflow:hidden; background:linear-gradient(#87ceeb,#b0e0e6 60%,#90ee90 100%); transition:background 0.8s; }
-  #view.night { background:linear-gradient(#0a0e1a,#1a1f3a,#2a2f4a); }
-  #view.rain  { background:linear-gradient(#4a5560,#6a7580 60%,#4a5a4a 100%); }
-  #view.snow  { background:linear-gradient(#b0c0d0,#d0dde8 60%,#e0e8f0 100%); }
-  #view.dusk  { background:linear-gradient(#ff7e5f,#feb47b 50%,#6a4a6a 100%); }
-  #view.fog   { background:linear-gradient(#a0a8b0,#c0c8d0 60%,#909890 100%); }
-  .raindrop { position:absolute; width:2px; height:20px; background:rgba(180,220,255,0.7); pointer-events:none; animation:fall 0.5s linear infinite; }
-  @keyframes fall { to { transform:translateY(100vh); } }
-  .snowflake { position:absolute; width:4px; height:4px; background:#fff; border-radius:50%; pointer-events:none; opacity:0.8; animation:fall 3s linear infinite; }
-  .windLine { position:absolute; height:1px; background:rgba(255,255,255,0.4); pointer-events:none; animation:wind 1s linear infinite; }
-  @keyframes wind { from { transform:translateX(-100%); } to { transform:translateX(100vw); } }
-  .ground { position:absolute; bottom:0; width:100%; height:60px; background:linear-gradient(#4a4a4a,#2a2a2a); border-top:3px solid #ffcc00; }
-  .runway { position:absolute; bottom:60px; height:8px; width:100%; background:repeating-linear-gradient(90deg,#555 0 30px,#fff 30px 50px); }
-  #plane { position:absolute; bottom:68px; left:80px; width:120px; height:40px; transition:bottom 0.3s,left 0.3s,transform 0.3s; z-index:5; }
-  #plane svg { width:100%; height:100%; }
-  #cabinView { display:none; position:absolute; inset:0; }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+  html, body { width:100%; height:100%; overflow:hidden; font-family:'Segoe UI', Tahoma, sans-serif; background:#000; color:#e0f8ff; touch-action:none; }
+  #game { position:absolute; inset:0; display:none; flex-direction:column; }
+  #game.active { display:flex; }
+
+  #menu { position:absolute; inset:0; background:radial-gradient(ellipse at center, #1a2b4a 0%, #060a15 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; z-index:100; padding:14px; overflow-y:auto; }
+  #menu.hidden { display:none; }
+  #menu h1 { font-size:clamp(20px, 3.5vw, 38px); color:#4fe4ff; letter-spacing:5px; text-shadow:0 0 25px #4fe4ffaa; margin-bottom:2px; }
+  #menu .sub { font-size:clamp(10px, 1.3vw, 13px); color:#7a90b0; letter-spacing:3px; margin-bottom:8px; }
+  .menu-label { font-size:11px; color:#4fe4ff; letter-spacing:2px; text-transform:uppercase; margin-top:6px; }
+  .menu-row { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:920px; }
+  .menu-btn { background:rgba(20,40,70,0.8); color:#a8d8ff; border:1px solid #2a4a7a; border-radius:6px; padding:7px 12px; cursor:pointer; font-family:inherit; font-size:11px; transition:all 0.15s; min-width:66px; text-align:center; line-height:1.3; }
+  .menu-btn:hover { background:#2a4a7a; color:#fff; }
+  .menu-btn.selected { background:#4fe4ff; color:#060a15; border-color:#4fe4ff; box-shadow:0 0 15px #4fe4ff88; font-weight:bold; }
+  #startBtn { margin-top:16px; background:linear-gradient(#4fe4ff, #2a9cc0); color:#060a15; border:none; border-radius:10px; padding:14px 50px; cursor:pointer; font-family:inherit; font-size:18px; font-weight:bold; letter-spacing:5px; box-shadow:0 0 30px #4fe4ff88; transition:all 0.2s; }
+  #startBtn:hover { transform:scale(1.05); box-shadow:0 0 50px #4fe4ffcc; }
+
+  #topbar { height:42px; background:linear-gradient(#0a1526, #060d18); border-bottom:2px solid #1a3550; display:flex; align-items:center; justify-content:space-between; padding:0 10px; gap:8px; flex-shrink:0; font-size:11px; }
+  .top-left, .top-right { display:flex; gap:6px; align-items:center; }
+  .cam-btn { background:rgba(20,40,70,0.7); color:#7fb8e0; border:1px solid #2a4a7a; border-radius:5px; padding:5px 9px; cursor:pointer; font-family:inherit; font-size:10px; letter-spacing:1px; transition:all 0.15s; }
+  .cam-btn:hover { background:#2a4a7a; color:#fff; }
+  .cam-btn.active { background:#4fe4ff; color:#060a15; border-color:#4fe4ff; font-weight:bold; }
+  #fps { color:#4a6a90; font-family:'Courier New', monospace; }
+  #status-box { flex:1; text-align:center; font-size:12px; color:#ffcc44; letter-spacing:2px; font-weight:bold; }
+
+  #scene { flex:1; position:relative; overflow:hidden; background:linear-gradient(#7ec0ee 0%, #b0d8f0 50%, #d8ecf8 100%); transition:background 1s; }
+  #scene.night { background:linear-gradient(#02030a 0%, #0a1030 60%, #15204a 100%); }
+  #scene.rain  { background:linear-gradient(#3a4550 0%, #556070 60%, #3a4550 100%); }
+  #scene.snow  { background:linear-gradient(#b0c0d0 0%, #d0dde8 60%, #e0e8f0 100%); }
+  #scene.dusk  { background:linear-gradient(#2a1a3a 0%, #c05a40 50%, #f0a070 100%); }
+  #scene.fog   { background:linear-gradient(#8a9298 0%, #a8b0b8 60%, #889098 100%); }
+
+  .sun { position:absolute; top:12%; right:12%; width:clamp(40px, 6vw, 70px); height:clamp(40px, 6vw, 70px); border-radius:50%; background:radial-gradient(circle, #fff, #ffe080); box-shadow:0 0 40px #ffe080aa; }
+
+  #sideView { position:absolute; inset:0; }
+  #sideView.hidden { display:none; }
+  .ground { position:absolute; bottom:0; left:0; right:0; height:24%; background:linear-gradient(#3a4a2a, #1a2510); border-top:2px solid #556a30; }
+  .runway { position:absolute; bottom:24%; left:0; right:0; height:12px; background:#2a2a2a; border-top:2px solid #555; }
+  .runway::before { content:''; position:absolute; top:50%; left:0; right:0; height:2px; background:repeating-linear-gradient(90deg, #fff 0 40px, transparent 40px 80px); transform:translateY(-50%); }
+  #plane { position:absolute; bottom:24%; left:14%; width:clamp(100px, 14vw, 170px); height:clamp(40px, 5vw, 65px); transition:bottom 0.5s, left 0.5s, transform 0.3s; z-index:5; }
+  #plane svg { width:100%; height:100%; filter:drop-shadow(0 4px 6px rgba(0,0,0,0.35)); }
+
+  #cabinView { position:absolute; inset:0; display:none; }
   #cabinView.active { display:block; }
-  .sky { position:absolute; inset:0; background:linear-gradient(#1e3a5f 0%,#4a90c2 40%,#a8d8ea 70%,#d4e8f0 100%); transition:background 0.8s; }
-  .sky.ground { background:linear-gradient(#555 0%,#888 50%,#aaa 100%); }
-  .sky.night  { background:linear-gradient(#000 0%,#0a1030 60%,#1a2040 100%); }
-  .dash { position:absolute; bottom:0; left:0; right:0; height:35%; background:linear-gradient(#1a1a1a,#0a0a0a); border-top:4px solid #333; box-shadow:0 -10px 30px rgba(0,0,0,0.7); }
-  .horizon { position:absolute; top:50%; left:0; right:0; height:2px; background:#000; transition:top 0.3s; }
-  #hud { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.8); padding:10px 14px; border:2px solid #7fffd4; border-radius:8px; font-size:13px; line-height:1.6; z-index:10; box-shadow:0 0 20px rgba(127,255,212,0.3); }
-  #hud .val { color:#fff; font-weight:bold; }
-  #weatherBadge { position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.8); padding:8px 14px; border:2px solid #ffcc00; border-radius:8px; font-size:12px; z-index:10; color:#ffcc00; }
-  #weatherBadge .airport { color:#7fffd4; font-weight:bold; font-size:14px; }
-  #panel { width:340px; background:#0f1420; border-left:3px solid #7fffd4; padding:12px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
-  #panel h2 { font-size:14px; color:#7fffd4; text-align:center; border-bottom:1px solid #7fffd4; padding-bottom:6px; letter-spacing:2px; }
-  .viewBtns { display:flex; gap:6px; }
-  .viewBtns button { flex:1; padding:8px; font-size:12px; }
-  .viewBtns button.active { background:#7fffd4; color:#0a0e1a; }
-  .airportBtns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; }
-  .weatherBtns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; }
-  button { background:#1a2436; color:#7fffd4; border:1px solid #7fffd4; border-radius:6px; padding:9px 10px; cursor:pointer; font-family:inherit; font-size:12px; text-align:left; transition:all 0.15s; min-height:38px; }
-  button:hover:not(:disabled) { background:#7fffd4; color:#0a0e1a; box-shadow:0 0 12px #7fffd4; }
-  button:active:not(:disabled) { transform:scale(0.96); }
-  button:disabled { opacity:0.35; cursor:not-allowed; }
-  button.danger { border-color:#ff4444; color:#ff6666; }
-  button.danger:hover { background:#ff4444; color:#fff; }
-  button.active { background:#2a5a3a; border-color:#4fff8a; color:#4fff8a; }
-  .airportBtns button, .weatherBtns button { font-size:11px; padding:6px 4px; text-align:center; }
-  #log { flex:1; min-height:120px; background:#000; border:1px solid #2a3a4a; border-radius:6px; padding:8px; font-size:11px; line-height:1.5; overflow-y:auto; color:#8fbc8f; }
-  #log .ok { color:#4fff8a; } #log .warn { color:#ffcc00; } #log .err { color:#ff5555; } #log .info { color:#4a90c2; }
-  .section-title { font-size:11px; color:#556; margin-top:4px; letter-spacing:1px; text-transform:uppercase; }
-  #joystick { display:none; position:absolute; bottom:20px; left:20px; width:120px; height:120px; border-radius:50%; background:rgba(127,255,212,0.1); border:2px solid rgba(127,255,212,0.5); z-index:20; touch-action:none; }
-  #stick { position:absolute; top:50%; left:50%; width:50px; height:50px; margin:-25px 0 0 -25px; border-radius:50%; background:rgba(127,255,212,0.5); border:2px solid #7fffd4; transition:transform 0.05s; }
-  #mobButtons { display:none; position:absolute; bottom:20px; right:20px; flex-direction:column; gap:8px; z-index:20; }
-  #mobButtons button { width:70px; height:70px; border-radius:50%; font-size:20px; text-align:center; padding:0; background:rgba(26,36,54,0.9); }
-  @media (max-width: 900px) {
-    body { flex-direction:column; } #left { height:55vh; }
-    #panel { width:100%; height:45vh; border-left:none; border-top:3px solid #7fffd4; display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:8px; }
-    #panel h2 { grid-column:1/-1; } .section-title { grid-column:1/-1; } #log { grid-column:1/-1; min-height:80px; }
-    button { font-size:11px; padding:8px 6px; min-height:42px; }
-    #hud { font-size:11px; padding:6px 10px; } #weatherBadge { font-size:10px; padding:5px 8px; }
-    #joystick { display:block; } #mobButtons { display:flex; }
+  .cabin-sky { position:absolute; inset:0; background:linear-gradient(#1e3a5f 0%, #4a90c2 40%, #a8d8ea 70%, #d4e8f0 100%); transition:background 1s; }
+  .cabin-sky.ground { background:linear-gradient(#444 0%, #777 50%, #999 100%); }
+  .cabin-sky.night  { background:linear-gradient(#000 0%, #050820 60%, #101840 100%); }
+  .cabin-sky.rain   { background:linear-gradient(#3a4550, #556070); }
+  .cabin-sky.snow   { background:linear-gradient(#b0c0d0, #d0dde8); }
+  .cabin-sky.dusk   { background:linear-gradient(#2a1a3a 0%, #c05a40 50%, #f0a070 100%); }
+  .cabin-sky.fog    { background:linear-gradient(#8a9298 0%, #c0c8d0 60%, #889098 100%); }
+  .cabin-horizon { position:absolute; left:0; right:0; height:2px; background:rgba(0,0,0,0.55); transition:top 0.4s; }
+  .cabin-frame { position:absolute; bottom:0; left:0; right:0; height:26%; background:linear-gradient(#1a1a1a, #050505); border-top:3px solid #2a2a2a; box-shadow:0 -8px 30px rgba(0,0,0,0.85); }
+  .cabin-frame::before, .cabin-frame::after { content:''; position:absolute; top:-1px; width:26%; height:6px; background:#0a0a0a; border-radius:4px 4px 0 0; }
+  .cabin-frame::before { left:10%; }
+  .cabin-frame::after  { right:10%; }
+  .cabin-pillar-l, .cabin-pillar-r { position:absolute; top:0; bottom:26%; width:clamp(14px, 2vw, 24px); background:linear-gradient(90deg, #050505, #1a1a1a); }
+  .cabin-pillar-l { left:0; }
+  .cabin-pillar-r { right:0; }
+
+  #outsideView { position:absolute; inset:0; display:none; }
+  #outsideView.active { display:block; }
+  .outside-sky { position:absolute; inset:0; background:linear-gradient(#0a0f1a 0%, #1a2a4a 50%, #4a6a8a 100%); }
+  .outside-stars { position:absolute; inset:0; background-image:radial-gradient(2px 2px at 20% 30%, #fff, transparent), radial-gradient(2px 2px at 60% 50%, #fff, transparent), radial-gradient(1px 1px at 40% 70%, #fff, transparent), radial-gradient(1px 1px at 80% 20%, #fff, transparent), radial-gradient(2px 2px at 10% 60%, #fff, transparent), radial-gradient(1px 1px at 90% 80%, #fff, transparent); background-size:100% 100%; }
+  .outside-earth { position:absolute; bottom:0; left:0; right:0; height:35%; background:radial-gradient(ellipse at 50% 0%, #3a6a4a 0%, #1a3a2a 60%, #0a1a15 100%); border-top-left-radius:100% 20%; border-top-right-radius:100% 20%; }
+
+  #instruments { position:absolute; top:10px; left:10px; display:grid; grid-template-columns:repeat(4, clamp(58px, 7.5vw, 86px)); grid-gap:6px; z-index:10; pointer-events:none; }
+  .gauge { width:100%; aspect-ratio:1/1; border-radius:50%; background:radial-gradient(circle at 30% 30%, #1a1f28, #05080d 80%); border:2px solid #2a3a4a; box-shadow:inset 0 0 12px rgba(0,0,0,0.8), 0 2px 6px rgba(0,0,0,0.5); position:relative; overflow:hidden; }
+  .gauge canvas { width:100%; height:100%; display:block; }
+  .gauge .gauge-label { position:absolute; top:4px; left:0; right:0; text-align:center; font-size:8px; color:#5a7a9a; letter-spacing:1px; text-transform:uppercase; font-family:'Courier New', monospace; }
+  .gauge .gauge-value { position:absolute; bottom:8px; left:0; right:0; text-align:center; font-size:clamp(11px, 1.4vw, 15px); color:#4fe4ff; font-weight:bold; font-family:'Courier New', monospace; text-shadow:0 0 6px #4fe4ffaa; }
+  .gauge .gauge-value.warn   { color:#ffaa33; }
+  .gauge .gauge-value.danger { color:#ff4444; animation:blink 0.6s infinite; }
+  @keyframes blink { 50% { opacity:0.4; } }
+
+  #controls { height:clamp(120px, 17vh, 160px); background:linear-gradient(#0a1526, #060d18); border-top:2px solid #1a3550; display:flex; align-items:stretch; flex-shrink:0; padding:6px; gap:6px; }
+  .btn-col { display:grid; grid-template-columns:repeat(2, 1fr); grid-template-rows:repeat(3, 1fr); gap:5px; width:clamp(160px, 20vw, 230px); flex-shrink:0; }
+  .ctrl-btn { background:linear-gradient(#1a3050, #0f1e33); color:#a8d8ff; border:1px solid #2a4a7a; border-radius:6px; cursor:pointer; font-family:inherit; font-size:10px; letter-spacing:0.5px; transition:all 0.15s; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:3px; line-height:1.1; }
+  .ctrl-btn:hover:not(:disabled) { background:#2a4a7a; color:#fff; }
+  .ctrl-btn:active:not(:disabled) { transform:scale(0.96); }
+  .ctrl-btn:disabled { opacity:0.3; cursor:not-allowed; }
+  .ctrl-btn.active { background:#2a9cc0; color:#fff; border-color:#4fe4ff; box-shadow:0 0 10px #4fe4ff88; }
+  .ctrl-btn .icon { font-size:14px; }
+  .ctrl-btn.danger { border-color:#7a2a2a; color:#ff8888; }
+  .ctrl-btn.danger:hover { background:#7a2a2a; color:#fff; }
+  .ctrl-btn .led { width:6px; height:6px; border-radius:50%; background:#3a1a1a; border:1px solid #5a2a2a; box-shadow:inset 0 0 3px #000; }
+  .ctrl-btn.active .led { background:#4fff8a; border-color:#4fff8a; box-shadow:0 0 8px #4fff8a; }
+
+  .throttle-col { flex:1; display:flex; align-items:center; justify-content:center; gap:14px; padding:4px 10px; background:rgba(0,0,0,0.35); border-radius:8px; border:1px solid #1a3550; }
+  .throttle-side-label { font-size:9px; color:#4a6a90; letter-spacing:2px; writing-mode:vertical-rl; text-orientation:mixed; transform:rotate(180deg); }
+  .throttle-wrap { display:flex; flex-direction:column; align-items:center; height:100%; padding:2px 0; }
+  .throttle-track { flex:1; width:clamp(34px, 5vw, 50px); position:relative; background:linear-gradient(to top, #0a1526, #1a3050); border:2px solid #2a4a7a; border-radius:24px; overflow:hidden; cursor:pointer; touch-action:none; }
+  .throttle-fill { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(to top, #2a9cc0, #4fe4ff); transition:height 0.08s; height:0%; box-shadow:0 0 15px #4fe4ff88; }
+  .throttle-knob { position:absolute; left:50%; transform:translateX(-50%); width:88%; height:12px; border-radius:6px; background:linear-gradient(#4fe4ff, #2a9cc0); border:2px solid #a8f0ff; box-shadow:0 0 12px #4fe4ff; bottom:0%; transition:bottom 0.08s; pointer-events:none; }
+  .throttle-value { margin-top:4px; font-size:clamp(11px, 1.3vw, 14px); color:#4fe4ff; font-weight:bold; font-family:'Courier New', monospace; text-shadow:0 0 8px #4fe4ff88; }
+
+  .joystick-col { width:clamp(120px, 15vw, 170px); display:flex; align-items:center; justify-content:center; flex-shrink:0; background:rgba(0,0,0,0.35); border-radius:8px; border:1px solid #1a3550; padding:6px; }
+  #rudderStick { width:100%; aspect-ratio:1/1; max-width:130px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #1a3050, #050810); border:2px solid #2a4a7a; box-shadow:inset 0 0 20px rgba(0,0,0,0.8), 0 0 15px rgba(79,228,255,0.15); position:relative; touch-action:none; cursor:grab; }
+  #rudderStick::before { content:''; position:absolute; top:50%; left:10%; right:10%; height:1px; background:#2a4a7a; }
+  #rudderStick::after { content:''; position:absolute; left:50%; top:10%; bottom:10%; width:1px; background:#2a4a7a; }
+  #rudderKnob { position:absolute; top:50%; left:50%; width:38%; height:38%; margin:-19% 0 0 -19%; border-radius:50%; background:radial-gradient(circle at 35% 35%, #4fe4ff, #1a6a8a); border:2px solid #a8f0ff; box-shadow:0 0 14px #4fe4ffaa; transition:transform 0.05s; pointer-events:none; }
+
+  #logPanel { position:absolute; top:42px; right:0; bottom:0; width:clamp(220px, 26vw, 320px); background:rgba(5,10,20,0.96); border-left:2px solid #1a3550; padding:10px; overflow-y:auto; font-size:11px; line-height:1.55; color:#8fbc8f; z-index:60; transform:translateX(100%); transition:transform 0.3s; font-family:'Courier New', monospace; }
+  #logPanel.open { transform:translateX(0); }
+  #logPanel .ok { color:#4fff8a; }
+  #logPanel .warn { color:#ffcc00; }
+  #logPanel .err { color:#ff5555; }
+  #logPanel .info { color:#4fe4ff; }
+  #logPanel h3 { font-size:12px; color:#4fe4ff; letter-spacing:2px; border-bottom:1px solid #1a3550; padding-bottom:6px; margin-bottom:8px; text-transform:uppercase; }
+
+  .raindrop { position:absolute; width:2px; height:14px; background:rgba(180,220,255,0.65); pointer-events:none; animation:fall 0.5s linear infinite; }
+  @keyframes fall { to { transform:translateY(100vh); } }
+  .snowflake { position:absolute; width:3px; height:3px; background:#fff; border-radius:50%; pointer-events:none; opacity:0.85; animation:fall 3s linear infinite; }
+  .fogLayer { position:absolute; inset:0; background:radial-gradient(ellipse at center, transparent 25%, rgba(210,220,230,0.75) 95%); pointer-events:none; }
+
+  @media (max-height: 500px) {
+    #topbar { height:34px; font-size:10px; }
+    #controls { height:110px; }
+    .ctrl-btn { font-size:9px; }
+    #logPanel { top:34px; }
   }
 </style>
 </head>
 <body>
-<div id="left">
-  <div id="view">
-    <div class="runway"></div>
-    <div class="ground"></div>
-    <div id="plane">
-      <svg viewBox="0 0 200 70">
-        <ellipse cx="100" cy="35" rx="80" ry="14" fill="#e8e8e8" stroke="#333" stroke-width="2"/>
-        <polygon points="100,20 130,5 130,20" fill="#e8e8e8" stroke="#333" stroke-width="2"/>
-        <polygon points="60,35 30,55 60,50" fill="#d0d0d0" stroke="#333" stroke-width="2"/>
-        <polygon points="140,35 170,55 140,50" fill="#d0d0d0" stroke="#333" stroke-width="2"/>
-        <circle cx="55" cy="30" r="6" fill="#4a90c2" stroke="#333" stroke-width="1.5"/>
-        <circle cx="75" cy="30" r="6" fill="#4a90c2" stroke="#333" stroke-width="1.5"/>
-        <circle cx="95" cy="30" r="6" fill="#4a90c2" stroke="#333" stroke-width="1.5"/>
-        <circle cx="115" cy="30" r="6" fill="#4a90c2" stroke="#333" stroke-width="1.5"/>
-      </svg>
+ <div id="menu">
+  <h1>✈️ PILOT SIMULATOR</h1>
+  <div class="sub">ВЫБЕРИ АЭРОПОРТ И ПОГОДУ</div>
+  <div class="menu-label">🌍 Аэропорт</div>
+  <div class="menu-row" id="airportRow">
+    <button class="menu-btn selected" data-airport="SVO">SVO<br>Москва</button>
+    <button class="menu-btn" data-airport="JFK">JFK<br>Нью-Йорк</button>
+    <button class="menu-btn" data-airport="DXB">DXB<br>Дубай</button>
+    <button class="menu-btn" data-airport="NRT">NRT<br>Токио</button>
+    <button class="menu-btn" data-airport="CDG">CDG<br>Париж</button>
+    <button class="menu-btn" data-airport="SYD">SYD<br>Сидней</button>
+  </div>
+  <div class="menu-label">🌤 Погода</div>
+  <div class="menu-row" id="weatherRow">
+    <button class="menu-btn selected" data-weather="clear">☀ Ясно</button>
+    <button class="menu-btn" data-weather="rain">🌧 Дождь</button>
+    <button class="menu-btn" data-weather="snow">❄ Снег</button>
+    <button class="menu-btn" data-weather="fog">🌫 Туман</button>
+    <button class="menu-btn" data-weather="dusk">🌆 Закат</button>
+    <button class="menu-btn" data-weather="night">🌙 Ночь</button>
+  </div>
+  <button id="startBtn">НАЧАТЬ ПОЛЁТ</button>
+</div>
+
+<div id="game">
+  <div id="topbar">
+    <div class="top-left">
+      <button class="cam-btn active" data-cam="cabin" onclick="setView('cabin')">👁 КАБИНА</button>
+      <button class="cam-btn" data-cam="side" onclick="setView('side')">🛩 СБОКУ</button>
+      <button class="cam-btn" data-cam="outside" onclick="setView('outside')">🌍 СНАРУЖИ</button>
     </div>
-    <div id="cabinView">
-      <div class="sky" id="sky"></div>
-      <div class="horizon" id="horizon"></div>
-      <div class="dash"></div>
+    <div id="status-box">НА ЗЕМЛЕ</div>
+    <div class="top-right">
+      <span id="fps">60 FPS</span>
+      <button class="cam-btn" onclick="toggleLog()">📜</button>
+      <button class="cam-btn" onclick="backToMenu()">⚙ МЕНЮ</button>
     </div>
-    <div id="hud">
-      <div>ВЫСОТА: <span class="val" id="alt">0</span> м</div>
-      <div>СКОРОСТЬ: <span class="val" id="spd">0</span> км/ч</div>
-      <div>ОБОРОТЫ: <span class="val" id="rpm">0</span> %</div>
-      <div>ТОПЛИВО: <span class="val" id="fuel">100</span> %</div>
-      <div>КУРС: <span class="val" id="hdg">270</span>°</div>
-      <div id="status" style="margin-top:4px;color:#ffcc00">СТОЯНКА</div>
+  </div>
+
+  <div id="scene">
+    <div class="sun" id="sun"></div>
+
+    <div id="sideView" class="hidden">
+      <div class="runway"></div>
+      <div class="ground"></div>
+      <div id="plane">
+        <svg viewBox="0 0 240 80">
+          <ellipse cx="120" cy="42" rx="100" ry="12" fill="#eef2f6" stroke="#1a2530" stroke-width="1.5"/>
+          <path d="M 220 42 Q 236 37 236 42 Q 236 47 220 42 Z" fill="#dfe6ee" stroke="#1a2530" stroke-width="1"/>
+          <path d="M 195 31 Q 216 31 219 38 Q 219 40 195 40 Z" fill="#3a7db8" stroke="#1a2530" stroke-width="1"/>
+          <polygon points="100,42 60,68 100,66" fill="#c8d0d8" stroke="#1a2530" stroke-width="1.5"/>
+          <polygon points="30,36 5,20 30,30" fill="#c8d0d8" stroke="#1a2530" stroke-width="1.5"/>
+          <polygon points="30,48 5,60 30,52" fill="#c8d0d8" stroke="#1a2530" stroke-width="1.5"/>
+          <polygon points="35,42 15,10 40,10 45,42" fill="#dfe6ee" stroke="#1a2530" stroke-width="1.5"/>
+          <ellipse cx="90" cy="53" rx="18" ry="7" fill="#c0c8d0" stroke="#1a2530" stroke-width="1"/>
+          <circle cx="90" cy="53" r="3.5" fill="#3a556a"/>
+          <circle cx="140" cy="38" r="2.5" fill="#3a7db8" stroke="#1a2530" stroke-width="0.8"/>
+          <circle cx="152" cy="38" r="2.5" fill="#3a7db8" stroke="#1a2530" stroke-width="0.8"/>
+          <circle cx="164" cy="38" r="2.5" fill="#3a7db8" stroke="#1a2530" stroke-width="0.8"/>
+          <circle cx="176" cy="38" r="2.5" fill="#3a7db8" stroke="#1a2530" stroke-width="0.8"/>
+          <line x1="20" y1="48" x2="220" y2="48" stroke="#2a9cc0" stroke-width="1.5"/>
+          <text x="60" y="30" font-size="12" fill="#c92a2a" font-family="Arial" font-weight="bold">SV</text>
+        </svg>
+      </div>
     </div>
-    <div id="weatherBadge">
-      <div class="airport" id="curAirport">🏢 SVO</div>
-      <div id="curWeather">☀ Ясно</div>
-      <div id="curWind">💨 0 м/с</div>
+
+    <div id="cabinView" class="active">
+      <div class="cabin-sky" id="cabinSky"></div>
+      <div class="cabin-horizon" id="cabinHorizon" style="top:55%"></div>
+      <div class="cabin-pillar-l"></div>
+      <div class="cabin-pillar-r"></div>
+      <div class="cabin-frame"></div>
     </div>
-    <div id="joystick"><div id="stick"></div></div>
-    <div id="mobButtons">
-      <button onclick="mobThrottleUp()">⬆</button>
-      <button onclick="mobThrottleDown()">⬇</button>
+
+    <div id="outsideView">
+      <div class="outside-sky"></div>
+      <div class="outside-stars"></div>
+      <div class="outside-earth"></div>
+    </div>
+
+    <div id="instruments">
+      <div class="gauge"><div class="gauge-label">ГОРИЗОНТ</div><canvas id="gHorizon" width="160" height="160"></canvas></div>
+      <div class="gauge"><div class="gauge-label">СКОРОСТЬ</div><canvas id="gSpeed" width="160" height="160"></canvas><div class="gauge-value" id="vSpeed">0</div></div>
+      <div class="gauge"><div class="gauge-label">ВЫСОТА</div><canvas id="gAlt" width="160" height="160"></canvas><div class="gauge-value" id="vAlt">0</div></div>
+      <div class="gauge"><div class="gauge-label">ОБОРОТЫ</div><canvas id="gRpm" width="160" height="160"></canvas><div class="gauge-value" id="vRpm">0</div></div>
+      <div class="gauge"><div class="gauge-label">ТОПЛИВО</div><canvas id="gFuel" width="160" height="160"></canvas><div class="gauge-value" id="vFuel">100</div></div>
+      <div class="gauge"><div class="gauge-label">КУРС</div><canvas id="gHdg" width="160" height="160"></canvas><div class="gauge-value" id="vHdg">270</div></div>
+      <div class="gauge"><div class="gauge-label">ВАРИОМЕТР</div><canvas id="gVario" width="160" height="160"></canvas><div class="gauge-value" id="vVario">0</div></div>
+      <div class="gauge"><div class="gauge-label">ШАССИ</div><canvas id="gGear" width="160" height="160"></canvas><div class="gauge-value" id="vGear">ВНИЗ</div></div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <div class="btn-col">
+      <button class="ctrl-btn" id="btnEngine1" onclick="toggleEngine(1)"><span class="icon">⚙</span><span>ENGINE 1</span><span class="led"></span></button>
+      <button class="ctrl-btn" id="btnEngine2" onclick="toggleEngine(2)"><span class="icon">⚙</span><span>ENGINE 2</span><span class="led"></span></button>
+      <button class="ctrl-btn" id="btnGear" onclick="toggleGear()"><span class="icon">🛬</span><span>ШАССИ</span><span class="led"></span></button>
+      <button class="ctrl-btn" id="btnFlaps" onclick="cycleFlaps()"><span class="icon">✈</span><span>ЗАКРЫЛКИ</span><span id="flapsTxt" style="font-size:9px;color:#4fe4ff">0/5</span></button>
+      <button class="ctrl-btn" id="btnBrakes" onclick="toggleBrakes()"><span class="icon">🛑</span><span>ТОРМОЗА</span><span class="led"></span></button>
+      <button class="ctrl-btn" id="btnLights" onclick="toggleLights()"><span class="icon">💡</span><span>СВЕТ</span><span class="led"></span></button>
+    </div>
+
+    <div class="throttle-col">
+      <div class="throttle-side-label">ТЯГА</div>
+      <div class="throttle-wrap">
+        <div class="throttle-track" id="throttleTrack">
+          <div class="throttle-fill" id="throttleFill"></div>
+          <div class="throttle-knob" id="throttleKnob"></div>
+        </div>
+        <div class="throttle-value"><span id="throttleVal">0</span>%</div>
+      </div>
+      <div class="throttle-side-label">THROTTLE</div>
+    </div>
+
+    <div class="joystick-col">
+      <div id="rudderStick"><div id="rudderKnob"></div></div>
     </div>
   </div>
 </div>
-<div id="panel">
-  <h2>✈️ ПАНЕЛЬ ПИЛОТА v2.0</h2>
-  <div class="viewBtns">
-    <button id="btnSide" class="active" onclick="setView('side')">🛩 Сбоку</button>
-    <button id="btnCabin" onclick="setView('cabin')">👨‍✈️ Из кабины</button>
-  </div>
-  <div class="section-title">🌍 Аэропорты</div>
-  <div class="airportBtns">
-    <button onclick="setAirport('SVO')">SVO<br>Москва</button>
-    <button onclick="setAirport('JFK')">JFK<br>Нью-Йорк</button>
-    <button onclick="setAirport('DXB')">DXB<br>Дубай</button>
-    <button onclick="setAirport('NRT')">NRT<br>Токио</button>
-    <button onclick="setAirport('CDG')">CDG<br>Париж</button>
-    <button onclick="setAirport('SYD')">SYD<br>Сидней</button>
-  </div>
-  <div class="section-title">🌤 Погода</div>
-  <div class="weatherBtns">
-    <button onclick="setWeather('clear')">☀ Ясно</button>
-    <button onclick="setWeather('rain')">🌧 Дождь</button>
-    <button onclick="setWeather('snow')">❄ Снег</button>
-    <button onclick="setWeather('fog')">🌫 Туман</button>
-    <button onclick="setWeather('dusk')">🌆 Закат</button>
-    <button onclick="setWeather('night')">🌙 Ночь</button>
-  </div>
-  <div class="section-title">Двигатели</div>
-  <button id="b1" onclick="startEngines()">[1] Запустить двигатели</button>
-  <button id="b2" onclick="setThrottle(100)">[6] Тяга 100%</button>
-  <div class="section-title">Взлёт</div>
-  <button id="b3" onclick="releaseBrakes()">[13] Отпустить тормоза</button>
-  <button id="b4" onclick="takeoff()">[15] Поднять нос (взлёт)</button>
-  <button id="b5" onclick="retractGear()">[16] Убрать шасси</button>
-  <div class="section-title">Полёт</div>
-  <button id="b6" onclick="climb()">[18] Набор высоты</button>
-  <button id="b7" onclick="descend()">[19] Снижение</button>
-  <button id="b8" onclick="toggleAutopilot()">[22] Автопилот</button>
-  <div class="section-title">Посадка</div>
-  <button id="b9" onclick="land()">[32] Касание полосы</button>
-  <button id="b10" onclick="brake()">[33] Торможение</button>
-  <div class="section-title">Аварии</div>
-  <button class="danger" onclick="alarm()">[39] ⚠️ Аварийная посадка</button>
-  <button class="danger" onclick="reset()">[48] Сброс тренажёра</button>
-  <div class="section-title">Журнал полёта</div>
-  <div id="log"></div>
-       </div>
-     <script>
+
+<div id="logPanel">
+  <h3>📜 Журнал полёта</h3>
+  <div id="logContent"></div>
+ </div>
+   <script>
+/* ============ АЭРОПОРТЫ ============ */
 const AIRPORTS = {
-  SVO:{name:'Шереметьево',city:'Москва',hdg:270,weather:'clear',wind:3},
-  JFK:{name:'Кеннеди',city:'Нью-Йорк',hdg:130,weather:'rain',wind:8},
-  DXB:{name:'Дубай',city:'Дубай',hdg:300,weather:'clear',wind:5},
-  NRT:{name:'Нарита',city:'Токио',hdg:160,weather:'fog',wind:2},
-  CDG:{name:'Шарль де Голль',city:'Париж',hdg:90,weather:'dusk',wind:6},
-  SYD:{name:'Кингсфорд',city:'Сидней',hdg:250,weather:'snow',wind:10}
+  SVO: { name:'Шереметьево',     city:'Москва',    hdg:270, weather:'clear', wind:3,  code:'SV' },
+  JFK: { name:'Кеннеди',         city:'Нью-Йорк',  hdg:130, weather:'rain',  wind:8,  code:'JK' },
+  DXB: { name:'Дубай',           city:'Дубай',     hdg:300, weather:'clear', wind:5,  code:'DX' },
+  NRT: { name:'Нарита',          city:'Токио',     hdg:160, weather:'fog',   wind:2,  code:'NR' },
+  CDG: { name:'Шарль де Голль',  city:'Париж',     hdg:90,  weather:'dusk',  wind:6,  code:'CD' },
+  SYD: { name:'Кингсфорд',       city:'Сидней',    hdg:250, weather:'snow',  wind:10, code:'SY' }
 };
-const WEATHER_LABEL = {clear:'☀ Ясно',rain:'🌧 Дождь',snow:'❄ Снег',fog:'🌫 Туман',dusk:'🌆 Закат',night:'🌙 Ночь'};
-const S = {engines:false,throttle:0,brakes:true,speed:0,alt:0,fuel:100,rpm:0,gear:true,flaps:0,autopilot:false,airborne:false,heading:270,view:'side',airport:'SVO',weather:'clear',wind:3};
-let audioCtx=null,engineOsc=null,engineGain=null,alarmOsc=null,windGain=null;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();}
-function startEngineSound(){
-  initAudio(); if(engineOsc)return;
-  engineOsc=audioCtx.createOscillator(); engineGain=audioCtx.createGain();
-  engineOsc.type='sawtooth'; engineOsc.frequency.value=60; engineGain.gain.value=0;
-  engineOsc.connect(engineGain).connect(audioCtx.destination); engineOsc.start();
-  const bs=2*audioCtx.sampleRate; const nb=audioCtx.createBuffer(1,bs,audioCtx.sampleRate);
-  const o=nb.getChannelData(0); for(let i=0;i<bs;i++)o[i]=Math.random()*2-1;
-  const n=audioCtx.createBufferSource(); n.buffer=nb; n.loop=true;
-  const f=audioCtx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=400;
-  windGain=audioCtx.createGain(); windGain.gain.value=0;
-  n.connect(f).connect(windGain).connect(audioCtx.destination); n.start();
+
+/* ============ СОСТОЯНИЕ ============ */
+const S = {
+  engines: [false, false], throttle: 0, brakes: true, lights: false,
+  gear: true, flaps: 0, speed: 0, alt: 0, fuel: 100, rpm: 0, heading: 270,
+  verticalSpeed: 0, airborne: false, autopilot: false,
+  view: 'cabin', airport: 'SVO', weather: 'clear', wind: 3,
+  crash: false, _crashLogged: false
+};
+
+/* ============ ЗВУК ============ */
+let audioCtx=null, engineOsc=null, engineGain=null, windGain=null, alarmOsc=null;
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 }
-function updateEngineSound(){
-  if(!engineOsc)return;
-  const t=S.engines?(40+S.rpm*1.5):0;
-  engineOsc.frequency.setTargetAtTime(t,audioCtx.currentTime,0.2);
-  engineGain.gain.setTargetAtTime(S.engines?(0.02+S.rpm*0.001):0,audioCtx.currentTime,0.2);
-  if(windGain)windGain.gain.setTargetAtTime(S.wind*0.005,audioCtx.currentTime,0.5);
+
+function startEngineSound() {
+  initAudio();
+  if (engineOsc) return;
+  engineOsc = audioCtx.createOscillator();
+  engineGain = audioCtx.createGain();
+  engineOsc.type = 'sawtooth';
+  engineOsc.frequency.value = 50;
+  engineGain.gain.value = 0;
+  engineOsc.connect(engineGain).connect(audioCtx.destination);
+  engineOsc.start();
+
+  const bufSize = 2 * audioCtx.sampleRate;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i=0;i<bufSize;i++) data[i] = Math.random()*2-1;
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf; noise.loop = true;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type='lowpass'; filter.frequency.value=500;
+  windGain = audioCtx.createGain(); windGain.gain.value = 0;
+  noise.connect(filter).connect(windGain).connect(audioCtx.destination);
+  noise.start();
 }
-function playAlarm(){
-  initAudio(); if(alarmOsc)return;
-  alarmOsc=audioCtx.createOscillator(); const g=audioCtx.createGain(); g.gain.value=0.05;
-  alarmOsc.type='square'; alarmOsc.frequency.value=800;
-  alarmOsc.connect(g).connect(audioCtx.destination); alarmOsc.start();
-  let up=true; const iv=setInterval(()=>{if(!alarmOsc){clearInterval(iv);return;}alarmOsc.frequency.setValueAtTime(up?800:500,audioCtx.currentTime);up=!up;},300);
+
+function updateEngineSound() {
+  if (!engineOsc) return;
+  const anyEngine = S.engines[0] || S.engines[1];
+  const target = anyEngine ? (45 + S.rpm*1.8) : 0;
+  engineOsc.frequency.setTargetAtTime(target, audioCtx.currentTime, 0.15);
+  engineGain.gain.setTargetAtTime(anyEngine ? (0.018 + S.rpm*0.0012) : 0, audioCtx.currentTime, 0.15);
+  if (windGain) windGain.gain.setTargetAtTime(S.wind*0.004, audioCtx.currentTime, 0.5);
 }
-function stopAlarm(){if(alarmOsc){alarmOsc.stop();alarmOsc=null;}}
-function log(m,c=''){const el=document.getElementById('log');const p=document.createElement('div');if(c)p.className=c;p.textContent='> '+m;el.appendChild(p);el.scrollTop=el.scrollHeight;}
-function setView(v){S.view=v;document.getElementById('cabinView').classList.toggle('active',v==='cabin');document.getElementById('btnSide').classList.toggle('active',v==='side');document.getElementById('btnCabin').classList.toggle('active',v==='cabin');}
-function setAirport(code){
-  S.airport=code; const ap=AIRPORTS[code]; S.heading=ap.hdg; S.wind=ap.wind; setWeather(ap.weather);
-  document.getElementById('curAirport').textContent='🏢 '+code+' — '+ap.city;
-  document.getElementById('curWind').textContent='💨 '+ap.wind+' м/с';
-  log('Аэропорт: '+ap.name+' ('+code+'), курс '+ap.hdg+'°','info');
-  updateStatus('НА ЗЕМЛЕ — '+code);
+
+function playAlarm() {
+  initAudio();
+  if (alarmOsc) return;
+  alarmOsc = audioCtx.createOscillator();
+  const g = audioCtx.createGain(); g.gain.value=0.04;
+  alarmOsc.type='square'; alarmOsc.frequency.value=850;
+  alarmOsc.connect(g).connect(audioCtx.destination);
+  alarmOsc.start();
+  let up=true;
+  const iv = setInterval(()=>{ if(!alarmOsc){clearInterval(iv);return;}
+    alarmOsc.frequency.setValueAtTime(up?850:600, audioCtx.currentTime); up=!up; }, 350);
 }
-function setWeather(w){
-  S.weather=w; const view=document.getElementById('view'); const sky=document.getElementById('sky');
-  ['night','rain','snow','dusk','fog'].forEach(c=>{view.classList.remove(c);sky.classList.remove(c);});
-  view.querySelectorAll('.raindrop,.snowflake,.windLine').forEach(e=>e.remove());
-  if(w==='night'){view.classList.add('night');sky.classList.add('night');} else if(w!=='clear'){view.classList.add(w);}
-  if(w==='rain')spawnRain(); if(w==='snow')spawnSnow(); if(w==='fog'||w==='dusk')spawnWind();
-  document.getElementById('curWeather').textContent=WEATHER_LABEL[w];
-  log('Погода: '+WEATHER_LABEL[w],'info');
+function stopAlarm(){ if(alarmOsc){alarmOsc.stop();alarmOsc=null;} }
+
+/* ============ ЛОГ ============ */
+function log(msg, cls='') {
+  const el = document.getElementById('logContent');
+  if (!el) return;
+  const p = document.createElement('div');
+  if (cls) p.className = cls;
+  p.textContent = '> ' + msg;
+  el.appendChild(p);
+  el.scrollTop = el.scrollHeight;
+  while (el.children.length > 50) el.removeChild(el.firstChild);
 }
-function spawnRain(){const v=document.getElementById('view');for(let i=0;i<40;i++){const d=document.createElement('div');d.className='raindrop';d.style.left=Math.random()*100+'%';d.style.top='-20px';d.style.animationDuration=(0.3+Math.random()*0.3)+'s';d.style.animationDelay=Math.random()+'s';v.appendChild(d);}}
-function spawnSnow(){const v=document.getElementById('view');for(let i=0;i<50;i++){const d=document.createElement('div');d.className='snowflake';d.style.left=Math.random()*100+'%';d.style.top='-10px';d.style.animationDuration=(2+Math.random()*3)+'s';d.style.animationDelay=Math.random()*3+'s';v.appendChild(d);}}
-function spawnWind(){const v=document.getElementById('view');for(let i=0;i<15;i++){const d=document.createElement('div');d.className='windLine';d.style.left='-100px';d.style.top=Math.random()*100+'%';d.style.width=(30+Math.random()*60)+'px';d.style.animationDuration=(0.5+Math.random())+'s';d.style.animationDelay=Math.random()+'s';v.appendChild(d);}}
-function startEngines(){if(S.engines)return log('Двигатели уже запущены','warn');S.engines=true;S.rpm=20;startEngineSound();log('Двигатель №1: ЗАПУЩЕН ✔','ok');log('Двигатель №2: ЗАПУЩЕН ✔','ok');updateStatus('ГОТОВ К ВЗЛЁТУ');}
-function setThrottle(v){if(!S.engines)return log('Сначала запусти двигатели! [1]','err');S.throttle=v;S.rpm=v;log('Тяга '+v+'% — двигатели ревут 🔊','ok');updateStatus('РАЗГОН');}
-function releaseBrakes(){if(!S.brakes)return log('Тормоза уже отпущены','warn');S.brakes=false;log('ТОРМОЗА ОТПУЩЕНЫ','ok');}
-function takeoff(){if(!S.engines)return log('Двигатели не запущены!','err');if(S.brakes)return log('Сначала отпусти тормоза! [13]','err');if(S.speed<150)return log('Слишком маленькая скорость!','err');S.airborne=true;log('🛫 НОС ВВЕРХ! Отрыв от земли!','ok');updateStatus('ВЗЛЁТ');}
-function retractGear(){if(!S.airborne)return log('Мы ещё на земле!','warn');S.gear=false;log('ШАССИ УБРАНО','ok');}
-function climb(){if(!S.airborne)return log('Сначала взлети!','err');S.alt+=500;log('Набор высоты... '+S.alt+' м','ok');}
-function descend(){if(!S.airborne)return log('Мы на земле','warn');S.alt=Math.max(0,S.alt-500);log('Снижение... '+S.alt+' м','ok');}
-function toggleAutopilot(){S.autopilot=!S.autopilot;log(S.autopilot?'АВТОПИЛОТ ВКЛЮЧЁН':'АВТОПИЛОТ ВЫКЛЮЧЕН','ok');updateStatus(S.autopilot?'АВТОПИЛОТ':'РУЧНОЕ УПРАВЛЕНИЕ');}
-function land(){if(!S.airborne)return log('Мы не в воздухе','warn');if(S.alt>500)return log('Слишком высоко!','err');S.alt=0;S.airborne=false;S.gear=true;log('🛬 КАСАНИЕ... МЯГКО! ✔','ok');updateStatus('НА ЗЕМЛЕ');}
-function brake(){S.speed=0;S.throttle=0;S.rpm=20;log('ТОРМОЖЕНИЕ... СТОП','ok');updateStatus('СТОЯНКА');}
-function alarm(){log('⚠️ АВАРИЙНАЯ ПОСАДКА ⚠️','err');updateStatus('⚠️ АВАРИЯ');playAlarm();setTimeout(()=>{stopAlarm();S.alt=0;S.speed=0;S.airborne=false;log('Аварийная посадка выполнена ✔','warn');updateStatus('НА ЗЕМЛЕ');},3000);}
-function reset(){stopAlarm();Object.assign(S,{engines:false,throttle:0,brakes:true,speed:0,alt:0,fuel:100,rpm:0,gear:true,flaps:0,autopilot:false,airborne:false});document.getElementById('log').innerHTML='';log('ТРЕНАЖЁР СБРОШЕН','ok');updateStatus('СТОЯНКА');}
-function updateStatus(t){const el=document.getElementById('status');el.textContent=t;el.style.color=t.includes('⚠️')?'#ff4444':((t.includes('ГОТОВ')||t.includes('ВЗЛЁТ'))?'#4fff8a':'#ffcc00');}
-const joy=document.getElementById('joystick'); const stick=document.getElementById('stick');
-let joyActive=false,joyX=0,joyY=0;
-function getJoyCenter(){const r=joy.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2,R:r.width/2-25};}
-function moveStick(dx,dy){const c=getJoyCenter();const dist=Math.hypot(dx,dy);const cl=Math.min(dist,c.R);const a=Math.atan2(dy,dx);const x=Math.cos(a)*cl,y=Math.sin(a)*cl;stick.style.transform='translate('+x+'px,'+y+'px)';joyX=x/c.R;joyY=y/c.R;}
-function resetStick(){stick.style.transform='translate(0,0)';joyX=0;joyY=0;}
-function handleJoyMove(e){if(!joyActive)return;const t=e.touches?e.touches[0]:e;const c=getJoyCenter();moveStick(t.clientX-c.x,t.clientY-c.y);e.preventDefault();}
-joy.addEventListener('touchstart',e=>{joyActive=true;handleJoyMove(e);},{passive:false});
-joy.addEventListener('mousedown',e=>{joyActive=true;handleJoyMove(e);});
-document.addEventListener('touchmove',handleJoyMove,{passive:false});
-document.addEventListener('mousemove',handleJoyMove);
-document.addEventListener('touchend',()=>{joyActive=false;resetStick();});
-document.addEventListener('mouseup',()=>{joyActive=false;resetStick();});
-function mobThrottleUp(){setThrottle(Math.min(100,S.throttle+25));}
-function mobThrottleDown(){setThrottle(Math.max(0,S.throttle-25));}
-setInterval(()=>{
-  if(joyY<-0.3&&S.airborne)S.alt+=15;
-  if(joyY>0.3&&S.airborne)S.alt=Math.max(0,S.alt-15);
-  if(joyX!==0)S.heading=(S.heading+joyX*0.8+360)%360;
-  const wf={clear:1,rain:0.7,snow:0.4,fog:0.6,dusk:0.9,night:0.85}[S.weather]||1;
-  const we=S.wind*0.5;
-  if(S.engines&&!S.brakes&&!S.airborne&&S.throttle>0){S.speed=Math.min(300,S.speed+S.throttle*0.08*wf-we*0.1);S.fuel=Math.max(0,S.fuel-0.03);}
-  if(S.airborne){S.speed=Math.min(900,S.speed+S.throttle*0.05*wf);if(!S.autopilot)S.alt=Math.max(0,S.alt+(S.throttle-50)*0.3);S.fuel=Math.max(0,S.fuel-0.05);if(S.alt<=0&&S.speed>250){log('⚠️ ЖЁСТКАЯ ПОСАДКА!','err');S.airborne=false;}}
-  if(!S.airborne&&S.throttle===0&&S.speed>0)S.speed=Math.max(0,S.speed-0.5);
-  if(S.fuel<=0&&S.engines){S.engines=false;S.rpm=0;S.throttle=0;log('⚠️ ТОПЛИВО КОНЧИЛОСЬ!','err');updateStatus('⚠️ ОТКАЗ ДВИГАТЕЛЕЙ');}
+function toggleLog() { document.getElementById('logPanel').classList.toggle('open'); }
+
+/* ============ МЕНЮ ============ */
+document.querySelectorAll('#airportRow .menu-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#airportRow .menu-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    S.airport = btn.dataset.airport;
+  });
+});
+document.querySelectorAll('#weatherRow .menu-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#weatherRow .menu-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    S.weather = btn.dataset.weather;
+  });
+});
+
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  document.getElementById('menu').classList.add('hidden');
+  document.getElementById('game').classList.add('active');
+  initAudio();
+  startFlight();
+});
+
+function backToMenu() {
+  document.getElementById('menu').classList.remove('hidden');
+  document.getElementById('game').classList.remove('active');
+  document.getElementById('logPanel').classList.remove('open');
+  resetFlight();
+  stopAlarm();
+}
+
+function startFlight() {
+  const ap = AIRPORTS[S.airport];
+  S.heading = ap.hdg;
+  S.wind = ap.wind;
+  applyWeather(S.weather);
+  log('Аэропорт: ' + ap.name + ' (' + S.airport + ')', 'info');
+  log('Курс: ' + ap.hdg + '°, ветер: ' + ap.wind + ' м/с', 'info');
+  log('Погода: ' + weatherLabel(S.weather), 'info');
+  log('Запусти двигатели (ENGINE 1, ENGINE 2)', 'warn');
+  updateStatus('НА ЗЕМЛЕ — ' + S.airport);
+  setView(S.view);
+}
+
+function weatherLabel(w) {
+  return {clear:'☀ Ясно', rain:'🌧 Дождь', snow:'❄ Снег', fog:'🌫 Туман', dusk:'🌆 Закат', night:'🌙 Ночь'}[w] || w;
+}
+
+function resetFlight() {
+  S.engines=[false,false]; S.throttle=0; S.brakes=true; S.lights=false;
+  S.gear=true; S.flaps=0; S.speed=0; S.alt=0; S.fuel=100; S.rpm=0;
+  S.verticalSpeed=0; S.airborne=false; S.autopilot=false; S.crash=false; S._crashLogged=false;
+  updateThrottleUI(); updateGearUI(); updateBrakesUI(); updateLightsUI();
+  document.getElementById('logContent').innerHTML='';
+  document.querySelectorAll('.ctrl-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('flapsTxt').textContent = '0/5';
+  updateStatus('НА ЗЕМЛЕ');
+}
+
+/* ============ ПОГОДА ============ */
+function applyWeather(w) {
+  const scene = document.getElementById('scene');
+  const sky = document.getElementById('cabinSky');
+  ['night','rain','snow','dusk','fog'].forEach(c=>{scene.classList.remove(c); sky.classList.remove(c);});
+  scene.querySelectorAll('.raindrop, .snowflake, .fogLayer').forEach(e=>e.remove());
+  if (w!=='clear') { scene.classList.add(w); sky.classList.add(w); }
+  if (w==='rain') spawnRain();
+  if (w==='snow') spawnSnow();
+  if (w==='fog') { const f = document.createElement('div'); f.className='fogLayer'; scene.appendChild(f); }
+}
+function spawnRain() {
+  const s = document.getElementById('scene');
+  for (let i=0;i<40;i++) {
+    const d = document.createElement('div'); d.className='raindrop';
+    d.style.left = Math.random()*100+'%'; d.style.top = '-20px';
+    d.style.animationDuration = (0.35+Math.random()*0.35)+'s';
+    d.style.animationDelay = Math.random()+'s';
+    s.appendChild(d);
+  }
+}
+function spawnSnow() {
+  const s = document.getElementById('scene');
+  for (let i=0;i<50;i++) {
+    const d = document.createElement('div'); d.className='snowflake';
+    d.style.left = Math.random()*100+'%'; d.style.top = '-10px';
+    d.style.animationDuration = (2.5+Math.random()*3)+'s';
+    d.style.animationDelay = Math.random()*3+'s';
+    s.appendChild(d);
+  }
+}
+
+/* ============ ВИД ============ */
+function setView(v) {
+  S.view = v;
+  document.querySelectorAll('.cam-btn[data-cam]').forEach(b=>{ b.classList.toggle('active', b.dataset.cam === v); });
+  document.getElementById('cabinView').classList.toggle('active', v==='cabin');
+  document.getElementById('sideView').classList.toggle('hidden', v!=='side');
+  document.getElementById('outsideView').classList.toggle('active', v==='outside');
+}
+
+/* ============ КНОПКИ ============ */
+function toggleEngine(n) {
+  const idx = n-1;
+  S.engines[idx] = !S.engines[idx];
+  if (S.engines[0] || S.engines[1]) {
+    if (!engineOsc) startEngineSound();
+    S.rpm = Math.max(S.rpm, 20);
+    log('Двигатель №' + n + ': ЗАПУЩЕН ✔', 'ok');
+  } else {
+    S.rpm = 0; S.throttle = 0;
+    updateThrottleUI();
+    log('Двигатель №' + n + ': ЗАГЛУШЕН', 'warn');
+  }
+  document.getElementById('btnEngine'+n).classList.toggle('active', S.engines[idx]);
+}
+
+function toggleGear() {
+  if (!S.airborne && !S.gear) return log('На земле шасси должны быть выпущены!', 'err');
+  if (S.speed > 350 && !S.gear) return log('Слишком большая скорость для выпуска шасси!', 'err');
+  S.gear = !S.gear;
+  log(S.gear ? 'ШАССИ ВЫПУЩЕНО' : 'ШАССИ УБРАНО', 'ok');
+  updateGearUI();
+}
+
+function cycleFlaps() {
+  if (S.speed > 400) return log('Слишком быстро для закрылков!', 'err');
+  S.flaps = (S.flaps + 1) % 6;
+  log('Закрылки: ' + S.flaps + '/5', 'ok');
+  document.getElementById('flapsTxt').textContent = S.flaps + '/5';
+}
+
+function toggleBrakes() {
+  S.brakes = !S.brakes;
+  log(S.brakes ? 'ТОРМОЗА ВКЛЮЧЕНЫ' : 'ТОРМОЗА ОТПУЩЕНЫ', S.brakes ? 'warn' : 'ok');
+  updateBrakesUI();
+}
+
+function toggleLights() {
+  S.lights = !S.lights;
+  log(S.lights ? 'ОГНИ ВКЛЮЧЕНЫ' : 'ОГНИ ВЫКЛЮЧЕНЫ', 'info');
+  updateLightsUI();
+}
+
+function updateGearUI() {
+  document.getElementById('btnGear').classList.toggle('active', S.gear);
+  document.getElementById('vGear').textContent = S.gear ? 'ВНИЗ' : 'ВВЕРХ';
+}
+function updateBrakesUI() { document.getElementById('btnBrakes').classList.toggle('active', S.brakes); }
+function updateLightsUI() { document.getElementById('btnLights').classList.toggle('active', S.lights); }
+function updateThrottleUI() {
+  document.getElementById('throttleFill').style.height = S.throttle + '%';
+  document.getElementById('throttleKnob').style.bottom = 'calc(' + S.throttle + '% - 6px)';
+  document.getElementById('throttleVal').textContent = Math.round(S.throttle);
+}
+
+function updateStatus(t) {
+  const el = document.getElementById('status-box');
+  el.textContent = t;
+  el.style.color = t.includes('⚠️') || t.includes('АВАР') ? '#ff4444' :
+                   (t.includes('ВЗЛЁТ') || t.includes('ГОТОВ') || t.includes('ЗАПУЩ')) ? '#4fff8a' : '#ffcc44';
+}
+
+/* ============ СЛАЙДЕР ТЯГИ ============ */
+const thTrack = document.getElementById('throttleTrack');
+let thDragging = false;
+
+function setThrottleFromEvent(e) {
+  const rect = thTrack.getBoundingClientRect();
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  const pct = Math.max(0, Math.min(100, 100 - (y / rect.height * 100)));
+  if (!(S.engines[0] || S.engines[1])) return;
+  S.throttle = pct;
+  S.rpm = S.engines[0] && S.engines[1] ? pct : pct*0.7;
+  updateThrottleUI();
+}
+
+thTrack.addEventListener('touchstart', e=>{ thDragging=true; setThrottleFromEvent(e); e.preventDefault(); }, {passive:false});
+thTrack.addEventListener('mousedown', e=>{ thDragging=true; setThrottleFromEvent(e); });
+document.addEventListener('touchmove', e=>{ if(thDragging){ setThrottleFromEvent(e); e.preventDefault(); } }, {passive:false});
+document.addEventListener('mousemove', e=>{ if(thDragging) setThrottleFromEvent(e); });
+document.addEventListener('touchend', ()=>{ thDragging=false; });
+document.addEventListener('mouseup', ()=>{ thDragging=false; });
+
+/* ============ ДЖОЙСТИК РУЛЯ ============ */
+const rudder = document.getElementById('rudderStick');
+const knob = document.getElementById('rudderKnob');
+let rudderActive = false, rudderX = 0;
+
+function setRudderFromEvent(e) {
+  const rect = rudder.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - cx;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - cy;
+  const R = rect.width/2 - 20;
+  const dist = Math.hypot(x, y);
+  const cl = Math.min(dist, R);
+  const a = Math.atan2(y, x);
+  const nx = Math.cos(a) * cl, ny = Math.sin(a) * cl;
+  knob.style.transform = 'translate(' + nx + 'px, ' + ny + 'px)';
+  rudderX = nx / R;
+}
+
+rudder.addEventListener('touchstart', e=>{ rudderActive=true; setRudderFromEvent(e); e.preventDefault(); }, {passive:false});
+rudder.addEventListener('mousedown', e=>{ rudderActive=true; setRudderFromEvent(e); });
+document.addEventListener('touchmove', e=>{ if(rudderActive){ setRudderFromEvent(e); e.preventDefault(); } }, {passive:false});
+document.addEventListener('mousemove', e=>{ if(rudderActive) setRudderFromEvent(e); });
+document.addEventListener('touchend', ()=>{ rudderActive=false; knob.style.transform='translate(0,0)'; rudderX=0; });
+document.addEventListener('mouseup', ()=>{ rudderActive=false; knob.style.transform='translate(0,0)'; rudderX=0; });
+    /* ============ ОТРИСОВКА ПРИБОРОВ ============ */
+function drawRoundGauge(ctx, opts) {
+  const W=160, H=160, cx=80, cy=80, R=68;
+  ctx.clearRect(0,0,W,H);
+  ctx.beginPath(); ctx.arc(cx, cy, R+4, 0, Math.PI*2);
+  ctx.strokeStyle='#2a3a4a'; ctx.lineWidth=2; ctx.stroke();
+
+  const startAngle = Math.PI * 0.75;
+  const endAngle = Math.PI * 2.25;
+  const range = opts.max - opts.min;
+
+  ctx.strokeStyle='#5a7a9a'; ctx.fillStyle='#5a7a9a';
+  ctx.font='bold 9px Courier New'; ctx.textAlign='center'; ctx.textBaseline='middle';
+
+  const steps = opts.steps || 10;
+  for (let i=0; i<=steps; i++) {
+    const t = i/steps;
+    const angle = startAngle + t*(endAngle-startAngle);
+    const x1 = cx + Math.cos(angle)*(R-3), y1 = cy + Math.sin(angle)*(R-3);
+    const x2 = cx + Math.cos(angle)*(R-13), y2 = cy + Math.sin(angle)*(R-13);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    const val = opts.min + t*range;
+    const lx = cx + Math.cos(angle)*(R-24), ly = cy + Math.sin(angle)*(R-24);
+    ctx.fillText(opts.format ? opts.format(val) : Math.round(val), lx, ly);
+  }
+  ctx.strokeStyle='#3a5570';
+  for (let i=0; i<=steps*5; i++) {
+    const t = i/(steps*5);
+    const angle = startAngle + t*(endAngle-startAngle);
+    const x1 = cx + Math.cos(angle)*(R-3), y1 = cy + Math.sin(angle)*(R-3);
+    const x2 = cx + Math.cos(angle)*(R-8), y2 = cy + Math.sin(angle)*(R-8);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+
+  const t = Math.max(0, Math.min(1, (opts.value - opts.min) / range));
+  const angle = startAngle + t*(endAngle-startAngle);
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(angle);
+  ctx.beginPath(); ctx.moveTo(0, 4); ctx.lineTo(R-12, 0); ctx.lineTo(0, -4); ctx.closePath();
+  ctx.fillStyle = opts.color || '#ff4444';
+  ctx.shadowColor = opts.color || '#ff4444'; ctx.shadowBlur = 6; ctx.fill();
+  ctx.restore();
+
+  ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2);
+  ctx.fillStyle='#1a2a3a'; ctx.strokeStyle='#4fe4ff'; ctx.lineWidth=2; ctx.fill(); ctx.stroke();
+
+  if (opts.redZone) {
+    const t1 = (opts.redZone[0]-opts.min)/range;
+    const t2 = (opts.redZone[1]-opts.min)/range;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R-3, startAngle+t1*(endAngle-startAngle), startAngle+t2*(endAngle-startAngle));
+    ctx.strokeStyle='#ff4444'; ctx.lineWidth=3; ctx.stroke();
+  }
+}
+
+function drawHorizon(ctx) {
+  const W=160, H=160, cx=80, cy=80, R=66;
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.clip();
+
+  const pitchOffset = Math.max(-50, Math.min(50, -S.alt*0.005));
+  const roll = 0;
+  ctx.save();
+  ctx.translate(cx, cy); ctx.rotate(roll); ctx.translate(0, pitchOffset);
+
+  ctx.fillStyle='#4a90c2'; ctx.fillRect(-R*2, -R*2, R*4, R*2);
+  ctx.fillStyle='#6a4a2a'; ctx.fillRect(-R*2, 0, R*4, R*2);
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(-R, 0); ctx.lineTo(R, 0); ctx.stroke();
+
+  ctx.strokeStyle='#fff'; ctx.lineWidth=1.5;
+  for (let a=-60; a<=60; a+=15) {
+    if (a===0) continue;
+    const rad = (a-90) * Math.PI/180;
+    const x1 = Math.cos(rad)*(R-10), y1 = Math.sin(rad)*(R-10);
+    const x2 = Math.cos(rad)*(R-18), y2 = Math.sin(rad)*(R-18);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.beginPath(); ctx.arc(cx, cy, R+3, 0, Math.PI*2);
+  ctx.strokeStyle='#4fe4ff'; ctx.lineWidth=2; ctx.stroke();
+
+  ctx.strokeStyle='#ffcc00'; ctx.lineWidth=2.5;
+  ctx.beginPath();
+  ctx.moveTo(cx-18, cy); ctx.lineTo(cx-6, cy);
+  ctx.moveTo(cx+6, cy); ctx.lineTo(cx+18, cy);
+  ctx.moveTo(cx, cy-3); ctx.lineTo(cx, cy+3);
+  ctx.stroke();
+}
+
+function drawGearIndicator(ctx) {
+  const W=160, H=160, cx=80, cy=80;
+  ctx.clearRect(0,0,W,H);
+  const positions = [[cx, cy-30], [cx-30, cy+20], [cx+30, cy+20]];
+  positions.forEach(([x,y])=>{
+    ctx.beginPath(); ctx.arc(x, y, 14, 0, Math.PI*2);
+    if (S.gear) { ctx.fillStyle='#2a7a2a'; ctx.shadowColor='#4fff8a'; ctx.shadowBlur=12; }
+    else { ctx.fillStyle='#3a1a1a'; ctx.shadowColor='transparent'; ctx.shadowBlur=0; }
+    ctx.fill(); ctx.shadowBlur=0;
+    ctx.strokeStyle='#1a2a3a'; ctx.lineWidth=2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x-4, y-4, 5, 0, Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.fill();
+  });
+  ctx.fillStyle = S.gear ? '#4fff8a' : '#ff8888';
+  ctx.font='bold 11px Courier New'; ctx.textAlign='center';
+  ctx.fillText(S.gear ? 'DOWN' : 'UP', cx, cy+58);
+}
+
+function updateGauges() {
+  drawHorizon(document.getElementById('gHorizon').getContext('2d'));
+
+  drawRoundGauge(document.getElementById('gSpeed').getContext('2d'), {
+    min:0, max:1000, value:S.speed, color:'#4fe4ff', steps:10, redZone:[850, 1000]
+  });
+  document.getElementById('vSpeed').textContent = Math.round(S.speed);
+
+  drawRoundGauge(document.getElementById('gAlt').getContext('2d'), {
+    min:0, max:12000, value:S.alt, color:'#4fff8a', steps:12, format:v=>Math.round(v/1000)
+  });
+  document.getElementById('vAlt').textContent = Math.round(S.alt);
+
+  drawRoundGauge(document.getElementById('gRpm').getContext('2d'), {
+    min:0, max:110, value:S.rpm, color:'#ffaa33', steps:11, redZone:[100, 110]
+  });
+  document.getElementById('vRpm').textContent = Math.round(S.rpm);
+
+  drawRoundGauge(document.getElementById('gFuel').getContext('2d'), {
+    min:0, max:100, value:S.fuel, color:S.fuel<20?'#ff4444':'#4fff8a', steps:10, redZone:[0, 15]
+  });
+  const fuelEl = document.getElementById('vFuel');
+  fuelEl.textContent = Math.round(S.fuel);
+  fuelEl.className = 'gauge-value ' + (S.fuel<15?'danger':S.fuel<30?'warn':'');
+
+  drawRoundGauge(document.getElementById('gHdg').getContext('2d'), {
+    min:0, max:360, value:S.heading, color:'#4fe4ff', steps:8
+  });
+  document.getElementById('vHdg').textContent = Math.round(S.heading);
+
+  drawRoundGauge(document.getElementById('gVario').getContext('2d'), {
+    min:-30, max:30, value:S.verticalSpeed, color:'#a8f0ff', steps:6
+  });
+  const vv = document.getElementById('vVario');
+  vv.textContent = (S.verticalSpeed>0?'+':'') + Math.round(S.verticalSpeed);
+  vv.className = 'gauge-value ' + (Math.abs(S.verticalSpeed)>20?'warn':'');
+
+  drawGearIndicator(document.getElementById('gGear').getContext('2d'));
+}
+
+/* ============ ФИЗИКА (главный цикл) ============ */
+let lastTime = performance.now();
+let fpsCounter = 0, fpsTimer = 0;
+
+function gameLoop() {
+  const now = performance.now();
+  const dt = Math.min(50, now - lastTime) / 1000;
+  lastTime = now;
+
+  fpsCounter++; fpsTimer += dt;
+  if (fpsTimer >= 1) {
+    document.getElementById('fps').textContent = fpsCounter + ' FPS';
+    fpsCounter = 0; fpsTimer = 0;
+  }
+
+  const anyEngine = S.engines[0] || S.engines[1];
+  const weatherFactor = {clear:1, rain:0.75, snow:0.45, fog:0.65, dusk:0.9, night:0.85}[S.weather] || 1;
+  const windPenalty = S.wind * 0.04;
+  const thrustPct = anyEngine ? S.throttle : 0;
+
+  if (!S.airborne && !S.brakes && thrustPct > 0) {
+    S.speed = Math.min(320, S.speed + thrustPct * 0.15 * dt * 10 * weatherFactor - windPenalty*10*dt);
+  }
+
+  if (S.airborne) {
+    S.speed = Math.min(1000, S.speed + thrustPct * 0.08 * dt * 10 * weatherFactor);
+    const targetVS = (thrustPct - 55) * 0.6;
+    S.verticalSpeed += (targetVS - S.verticalSpeed) * dt * 2;
+    S.alt = Math.max(0, S.alt + S.verticalSpeed * dt);
+    if (S.alt <= 0 && S.verticalSpeed < -5) {
+      if (S.speed > 300 || S.verticalSpeed < -25) {
+        S.crash = true;
+        log('⚠️ ЖЁСТКАЯ ПОСАДКА!', 'err');
+        updateStatus('⚠️ АВАРИЯ');
+      } else {
+        S.airborne = false; S.verticalSpeed = 0;
+        log('🛬 Касание полосы. Мягко ✔', 'ok');
+        updateStatus('НА ЗЕМЛЕ');
+      }
+    }
+  }
+
+  if (!S.airborne && S.brakes && S.speed > 0) {
+    S.speed = Math.max(0, S.speed - 80*dt);
+  }
+  if (!S.airborne && S.brakes && S.speed > 0) {
+    S.speed = Math.max(0, S.speed - 30*dt);
+  }
+
+  if (anyEngine) {
+    S.fuel = Math.max(0, S.fuel - (0.5 + S.throttle*0.02) * dt);
+    if (S.fuel <= 0) {
+      S.engines = [false, false]; S.rpm = 0; S.throttle = 0;
+      updateThrottleUI();
+      document.getElementById('btnEngine1').classList.remove('active');
+      document.getElementById('btnEngine2').classList.remove('active');
+      log('⚠️ ТОПЛИВО КОНЧИЛОСЬ!', 'err');
+      updateStatus('⚠️ ОТКАЗ ДВИГАТЕЛЕЙ');
+    }
+  }
+
+  if (rudderX !== 0) S.heading = (S.heading + rudderX * 40 * dt + 360) % 360;
+
+  if (anyEngine && S.rpm < S.throttle) S.rpm = Math.min(S.throttle, S.rpm + 40*dt);
+  else if (!anyEngine) S.rpm = Math.max(0, S.rpm - 80*dt);
+
+  if (S.autopilot && S.airborne) {
+    S.verticalSpeed = 0;
+    S.alt = Math.round(S.alt / 100) * 100;
+  }
+
   updateEngineSound();
-  document.getElementById('alt').textContent=Math.round(S.alt);
-  document.getElementById('spd').textContent=Math.round(S.speed);
-  document.getElementById('rpm').textContent=Math.round(S.rpm);
-  document.getElementById('fuel').textContent=Math.round(S.fuel);
-  document.getElementById('hdg').textContent=Math.round(S.heading);
-  const plane=document.getElementById('plane');
-  const fa=Math.min(400,S.alt*0.4);
-  plane.style.bottom=(68+fa)+'px';
-  plane.style.left=S.airborne?'30%':(80+S.speed*0.4)+'px';
-  const tilt=S.airborne?-12:(S.speed>100?-5:0);
-  plane.style.transform='rotate('+tilt+'deg)';
-  const hz=document.getElementById('horizon'); const sk=document.getElementById('sky');
-  const hp=50+(S.alt>0?Math.min(30,S.alt/300):-20);
-  hz.style.top=hp+'%';
-  sk.classList.toggle('ground',S.alt<=0);
-  if(S.weather!=='night')sk.classList.toggle('night',S.alt>3000);
-  document.getElementById('b8').classList.toggle('active',S.autopilot);
-  document.getElementById('b5').disabled=S.gear===false;
-},100);
-log('Добро пожаловать, пилот! v2.0','ok');
-log('Выбери аэропорт и погоду, затем жми [1]','warn');
-setAirport('SVO');
+  updateGauges();
+
+  const plane = document.getElementById('plane');
+  const flyAlt = Math.min(300, S.alt * 0.25);
+  plane.style.bottom = 'calc(24% + ' + flyAlt + 'px)';
+  if (!S.airborne) {
+    plane.style.left = Math.min(75, 14 + S.speed * 0.15) + '%';
+  } else {
+    plane.style.left = '40%';
+  }
+  const tilt = S.airborne ? -10 : (S.speed > 120 ? -4 : 0);
+  plane.style.transform = 'rotate(' + tilt + 'deg)';
+
+  const horizon = document.getElementById('cabinHorizon');
+  const horizPos = 55 - Math.max(-25, Math.min(25, S.verticalSpeed * 0.8));
+  horizon.style.top = horizPos + '%';
+  const sky = document.getElementById('cabinSky');
+  sky.classList.toggle('ground', S.alt <= 0);
+
+  if (!S.airborne && !S.crash && S.speed > 240 && thrustPct > 60 && !S.brakes) {
+    S.airborne = true; S.verticalSpeed = 5;
+    log('🛫 ОТРЫВ ОТ ЗЕМЛИ!', 'ok');
+    updateStatus('ВЗЛЁТ');
+  }
+
+  if (S.autopilot && S.airborne) {
+    S.verticalSpeed = Math.max(-2, Math.min(2, (3000 - S.alt) * 0.005));
+  }
+
+  if (S.crash && !S._crashLogged) {
+    S._crashLogged = true;
+    playAlarm();
+    setTimeout(()=>{ stopAlarm(); updateStatus('⚠️ АВАРИЯ'); }, 200);
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+/* ============ ДОП. ФУНКЦИИ ============ */
+function toggleAutopilot() {
+  S.autopilot = !S.autopilot;
+  log(S.autopilot ? 'АВТОПИЛОТ ВКЛЮЧЁН' : 'АВТОПИЛОТ ВЫКЛЮЧЕН', 'ok');
+  updateStatus(S.autopilot ? 'АВТОПИЛОТ' : 'РУЧНОЕ УПРАВЛЕНИЕ');
+}
+
+/* ============ СТАРТ ============ */
+requestAnimationFrame(gameLoop);
+log('Добро пожаловать в Pilot Simulator!', 'ok');
+log('Выбери аэропорт и погоду → НАЧАТЬ ПОЛЁТ', 'info');
+log('Запусти ENGINE 1 и ENGINE 2, подними тягу', 'warn');
 </script>
 </body>
-</html>  
+</html>
