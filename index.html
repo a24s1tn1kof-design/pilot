@@ -24,7 +24,6 @@
   #view.dusk  { background:linear-gradient(#ff7e5f, #feb47b 50%, #6a4a6a 100%); }
   #view.fog   { background:linear-gradient(#a0a8b0, #c0c8d0 60%, #909890 100%); }
 
-  /* Погодные эффекты */
   .raindrop {
     position:absolute; width:2px; height:20px;
     background:rgba(180,220,255,0.7);
@@ -46,7 +45,6 @@
   }
   @keyframes wind { from { transform: translateX(-100%); } to { transform: translateX(100vw); } }
 
-  /* Вид сбоку */
   .ground {
     position:absolute; bottom:0; width:100%; height:60px;
     background:linear-gradient(#4a4a4a, #2a2a2a);
@@ -64,7 +62,6 @@
   }
   #plane svg { width:100%; height:100%; }
 
-  /* Вид из кабины */
   #cabinView { display:none; position:absolute; inset:0; }
   #cabinView.active { display:block; }
   .sky {
@@ -85,7 +82,6 @@
     background:#000; transition: top 0.3s;
   }
 
-  /* HUD */
   #hud {
     position:absolute; top:10px; left:10px;
     background:rgba(0,0,0,0.8); padding:10px 14px;
@@ -102,7 +98,6 @@
   }
   #weatherBadge .airport { color:#7fffd4; font-weight:bold; font-size:14px; }
 
-  /* Панель */
   #panel {
     width:340px; background:#0f1420;
     border-left:3px solid #7fffd4;
@@ -153,7 +148,6 @@
     letter-spacing:1px; text-transform:uppercase;
   }
 
-  /* Джойстик */
   #joystick {
     display:none;
     position:absolute; bottom:20px; left:20px;
@@ -184,7 +178,6 @@
     background:rgba(26,36,54,0.9);
   }
 
-  /* Мобильная раскладка */
   @media (max-width: 900px) {
     body { flex-direction:column; }
     #left { height:55vh; }
@@ -314,16 +307,11 @@
   <div id="log"></div>
 </div>
 
-<!-- Сюда подключается ЧАСТЬ 2 (логика) -->
-<script src="plane.js"></script>
-</body>
-  </html>
-  /* ==========================================================
+<script>
+ /* ==========================================================
    ✈️ СИМУЛЯТОР ПИЛОТА v2.0 — ЛОГИКА
-   Файл: plane.js (подключается из plane.html)
    ========================================================== */
 
-// ============ АЭРОПОРТЫ ============
 const AIRPORTS = {
   SVO: { name:'Шереметьево',    city:'Москва',    hdg:270, weather:'clear', wind:3  },
   JFK: { name:'Кеннеди',        city:'Нью-Йорк',  hdg:130, weather:'rain',  wind:8  },
@@ -338,7 +326,6 @@ const WEATHER_LABEL = {
   fog:'🌫 Туман', dusk:'🌆 Закат', night:'🌙 Ночь'
 };
 
-// ============ СОСТОЯНИЕ ============
 const S = {
   engines:false, throttle:0, brakes:true,
   speed:0, alt:0, fuel:100, rpm:0,
@@ -347,7 +334,6 @@ const S = {
   view:'side', airport:'SVO', weather:'clear', wind:3
 };
 
-// ============ ЗВУК ============
 let audioCtx=null, engineOsc=null, engineGain=null, alarmOsc=null, windGain=null;
 
 function initAudio() {
@@ -358,8 +344,6 @@ function initAudio() {
 function startEngineSound() {
   initAudio();
   if (engineOsc) return;
-
-  // гул двигателя
   engineOsc = audioCtx.createOscillator();
   engineGain = audioCtx.createGain();
   engineOsc.type = 'sawtooth';
@@ -368,7 +352,6 @@ function startEngineSound() {
   engineOsc.connect(engineGain).connect(audioCtx.destination);
   engineOsc.start();
 
-  // ветер (белый шум через фильтр)
   const bufferSize = 2 * audioCtx.sampleRate;
   const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
   const output = noiseBuffer.getChannelData(0);
@@ -408,7 +391,6 @@ function playAlarm() {
 
 function stopAlarm(){ if(alarmOsc){alarmOsc.stop();alarmOsc=null;} }
 
-// ============ ЛОГ ============
 function log(msg, cls='') {
   const el = document.getElementById('log');
   const p = document.createElement('div');
@@ -418,7 +400,6 @@ function log(msg, cls='') {
   el.scrollTop = el.scrollHeight;
 }
 
-// ============ ВИД ============
 function setView(v) {
   S.view = v;
   document.getElementById('cabinView').classList.toggle('active', v==='cabin');
@@ -426,7 +407,6 @@ function setView(v) {
   document.getElementById('btnCabin').classList.toggle('active', v==='cabin');
 }
 
-// ============ АЭРОПОРТ ============
 function setAirport(code) {
   S.airport = code;
   const ap = AIRPORTS[code];
@@ -439,7 +419,6 @@ function setAirport(code) {
   updateStatus('НА ЗЕМЛЕ — ' + code);
 }
 
-// ============ ПОГОДА ============
 function setWeather(w) {
   S.weather = w;
   const view = document.getElementById('view');
@@ -501,7 +480,6 @@ function spawnWind() {
   }
 }
 
-// ============ ДЕЙСТВИЯ ============
 function startEngines() {
   if (S.engines) return log('Двигатели уже запущены','warn');
   S.engines=true; S.rpm=20; startEngineSound();
@@ -597,7 +575,6 @@ function updateStatus(t) {
     (t.includes('ГОТОВ')||t.includes('ВЗЛЁТ')) ? '#4fff8a' : '#ffcc00';
 }
 
-// ============ МОБИЛЬНЫЙ ДЖОЙСТИК ============
 const joy   = document.getElementById('joystick');
 const stick = document.getElementById('stick');
 let joyActive=false, joyX=0, joyY=0;
@@ -640,26 +617,21 @@ document.addEventListener('mouseup',  ()=>{ joyActive=false; resetStick(); });
 function mobThrottleUp()   { setThrottle(Math.min(100, S.throttle+25)); }
 function mobThrottleDown() { setThrottle(Math.max(0,   S.throttle-25)); }
 
-// ============ ФИЗИКА (главный цикл) ============
 setInterval(() => {
-  // Управление с джойстика
   if (joyY < -0.3 && S.airborne) S.alt += 15;
   if (joyY >  0.3 && S.airborne) S.alt = Math.max(0, S.alt-15);
   if (joyX !== 0) S.heading = (S.heading + joyX*0.8 + 360) % 360;
 
-  // Влияние погоды и ветра
   const weatherFactor = {
     clear:1, rain:0.7, snow:0.4, fog:0.6, dusk:0.9, night:0.85
   }[S.weather] || 1;
   const windEffect = S.wind * 0.5;
 
-  // Разгон
   if (S.engines && !S.brakes && !S.airborne && S.throttle>0) {
     S.speed = Math.min(300, S.speed + S.throttle*0.08*weatherFactor - windEffect*0.1);
     S.fuel  = Math.max(0, S.fuel-0.03);
   }
 
-  // Полёт
   if (S.airborne) {
     S.speed = Math.min(900, S.speed + S.throttle*0.05*weatherFactor);
     if (!S.autopilot) S.alt = Math.max(0, S.alt + (S.throttle-50)*0.3);
@@ -670,12 +642,10 @@ setInterval(() => {
     }
   }
 
-  // Торможение
   if (!S.airborne && S.throttle===0 && S.speed>0) {
     S.speed = Math.max(0, S.speed-0.5);
   }
 
-  // Топливо кончилось
   if (S.fuel<=0 && S.engines) {
     S.engines=false; S.rpm=0; S.throttle=0;
     log('⚠️ ТОПЛИВО КОНЧИЛОСЬ!','err');
@@ -684,14 +654,12 @@ setInterval(() => {
 
   updateEngineSound();
 
-  // Приборы
   document.getElementById('alt').textContent  = Math.round(S.alt);
   document.getElementById('spd').textContent  = Math.round(S.speed);
   document.getElementById('rpm').textContent  = Math.round(S.rpm);
   document.getElementById('fuel').textContent = Math.round(S.fuel);
   document.getElementById('hdg').textContent  = Math.round(S.heading);
 
-  // Вид сбоку
   const plane = document.getElementById('plane');
   const flyAlt = Math.min(400, S.alt*0.4);
   plane.style.bottom = (68 + flyAlt) + 'px';
@@ -699,7 +667,6 @@ setInterval(() => {
   const tilt = S.airborne ? -12 : (S.speed>100 ? -5 : 0);
   plane.style.transform = `rotate(${tilt}deg)`;
 
-  // Вид из кабины
   const horizon = document.getElementById('horizon');
   const sky = document.getElementById('sky');
   const horizPos = 50 + (S.alt>0 ? Math.min(30, S.alt/300) : -20);
@@ -707,13 +674,14 @@ setInterval(() => {
   sky.classList.toggle('ground', S.alt<=0);
   if (S.weather!=='night') sky.classList.toggle('night', S.alt>3000);
 
-  // Активные кнопки
   document.getElementById('b8').classList.toggle('active', S.autopilot);
   document.getElementById('b5').disabled = S.gear===false;
 
 }, 100);
 
-// ============ СТАРТ ============
 log('Добро пожаловать, пилот! v2.0','ok');
 log('Выбери аэропорт и погоду, затем жми [1]','warn');
 setAirport('SVO');
+</script>
+</body>
+</html>
