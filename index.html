@@ -6,123 +6,42 @@
 <title>✈️ Симулятор пилота v2.0</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  body {
-    font-family: 'Courier New', monospace;
-    background:#0a0e1a; color:#7fffd4;
-    display:flex; height:100vh; overflow:hidden;
-    touch-action: manipulation;
-  }
+  body { font-family:'Courier New',monospace; background:#0a0e1a; color:#7fffd4; display:flex; height:100vh; overflow:hidden; touch-action:manipulation; }
   #left { flex:1; display:flex; flex-direction:column; position:relative; }
-  #view {
-    flex:1; position:relative; overflow:hidden;
-    background:linear-gradient(#87ceeb, #b0e0e6 60%, #90ee90 100%);
-    transition: background 0.8s;
-  }
-  #view.night { background:linear-gradient(#0a0e1a, #1a1f3a, #2a2f4a); }
-  #view.rain  { background:linear-gradient(#4a5560, #6a7580 60%, #4a5a4a 100%); }
-  #view.snow  { background:linear-gradient(#b0c0d0, #d0dde8 60%, #e0e8f0 100%); }
-  #view.dusk  { background:linear-gradient(#ff7e5f, #feb47b 50%, #6a4a6a 100%); }
-  #view.fog   { background:linear-gradient(#a0a8b0, #c0c8d0 60%, #909890 100%); }
-
-  .raindrop {
-    position:absolute; width:2px; height:20px;
-    background:rgba(180,220,255,0.7);
-    pointer-events:none;
-    animation: fall 0.5s linear infinite;
-  }
-  @keyframes fall { to { transform: translateY(100vh); } }
-  .snowflake {
-    position:absolute; width:4px; height:4px;
-    background:#fff; border-radius:50%;
-    pointer-events:none; opacity:0.8;
-    animation: fall 3s linear infinite;
-  }
-  .windLine {
-    position:absolute; height:1px;
-    background:rgba(255,255,255,0.4);
-    pointer-events:none;
-    animation: wind 1s linear infinite;
-  }
-  @keyframes wind { from { transform: translateX(-100%); } to { transform: translateX(100vw); } }
-
-  .ground {
-    position:absolute; bottom:0; width:100%; height:60px;
-    background:linear-gradient(#4a4a4a, #2a2a2a);
-    border-top:3px solid #ffcc00;
-  }
-  .runway {
-    position:absolute; bottom:60px; height:8px; width:100%;
-    background:repeating-linear-gradient(90deg,#555 0 30px,#fff 30px 50px);
-  }
-  #plane {
-    position:absolute; bottom:68px; left:80px;
-    width:120px; height:40px;
-    transition: bottom 0.3s, left 0.3s, transform 0.3s;
-    z-index:5;
-  }
+  #view { flex:1; position:relative; overflow:hidden; background:linear-gradient(#87ceeb,#b0e0e6 60%,#90ee90 100%); transition:background 0.8s; }
+  #view.night { background:linear-gradient(#0a0e1a,#1a1f3a,#2a2f4a); }
+  #view.rain  { background:linear-gradient(#4a5560,#6a7580 60%,#4a5a4a 100%); }
+  #view.snow  { background:linear-gradient(#b0c0d0,#d0dde8 60%,#e0e8f0 100%); }
+  #view.dusk  { background:linear-gradient(#ff7e5f,#feb47b 50%,#6a4a6a 100%); }
+  #view.fog   { background:linear-gradient(#a0a8b0,#c0c8d0 60%,#909890 100%); }
+  .raindrop { position:absolute; width:2px; height:20px; background:rgba(180,220,255,0.7); pointer-events:none; animation:fall 0.5s linear infinite; }
+  @keyframes fall { to { transform:translateY(100vh); } }
+  .snowflake { position:absolute; width:4px; height:4px; background:#fff; border-radius:50%; pointer-events:none; opacity:0.8; animation:fall 3s linear infinite; }
+  .windLine { position:absolute; height:1px; background:rgba(255,255,255,0.4); pointer-events:none; animation:wind 1s linear infinite; }
+  @keyframes wind { from { transform:translateX(-100%); } to { transform:translateX(100vw); } }
+  .ground { position:absolute; bottom:0; width:100%; height:60px; background:linear-gradient(#4a4a4a,#2a2a2a); border-top:3px solid #ffcc00; }
+  .runway { position:absolute; bottom:60px; height:8px; width:100%; background:repeating-linear-gradient(90deg,#555 0 30px,#fff 30px 50px); }
+  #plane { position:absolute; bottom:68px; left:80px; width:120px; height:40px; transition:bottom 0.3s,left 0.3s,transform 0.3s; z-index:5; }
   #plane svg { width:100%; height:100%; }
-
   #cabinView { display:none; position:absolute; inset:0; }
   #cabinView.active { display:block; }
-  .sky {
-    position:absolute; inset:0;
-    background:linear-gradient(#1e3a5f 0%, #4a90c2 40%, #a8d8ea 70%, #d4e8f0 100%);
-    transition: background 0.8s;
-  }
-  .sky.ground { background:linear-gradient(#555 0%, #888 50%, #aaa 100%); }
-  .sky.night  { background:linear-gradient(#000 0%, #0a1030 60%, #1a2040 100%); }
-  .dash {
-    position:absolute; bottom:0; left:0; right:0; height:35%;
-    background:linear-gradient(#1a1a1a, #0a0a0a);
-    border-top:4px solid #333;
-    box-shadow: 0 -10px 30px rgba(0,0,0,0.7);
-  }
-  .horizon {
-    position:absolute; top:50%; left:0; right:0; height:2px;
-    background:#000; transition: top 0.3s;
-  }
-
-  #hud {
-    position:absolute; top:10px; left:10px;
-    background:rgba(0,0,0,0.8); padding:10px 14px;
-    border:2px solid #7fffd4; border-radius:8px;
-    font-size:13px; line-height:1.6; z-index:10;
-    box-shadow:0 0 20px rgba(127,255,212,0.3);
-  }
+  .sky { position:absolute; inset:0; background:linear-gradient(#1e3a5f 0%,#4a90c2 40%,#a8d8ea 70%,#d4e8f0 100%); transition:background 0.8s; }
+  .sky.ground { background:linear-gradient(#555 0%,#888 50%,#aaa 100%); }
+  .sky.night  { background:linear-gradient(#000 0%,#0a1030 60%,#1a2040 100%); }
+  .dash { position:absolute; bottom:0; left:0; right:0; height:35%; background:linear-gradient(#1a1a1a,#0a0a0a); border-top:4px solid #333; box-shadow:0 -10px 30px rgba(0,0,0,0.7); }
+  .horizon { position:absolute; top:50%; left:0; right:0; height:2px; background:#000; transition:top 0.3s; }
+  #hud { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.8); padding:10px 14px; border:2px solid #7fffd4; border-radius:8px; font-size:13px; line-height:1.6; z-index:10; box-shadow:0 0 20px rgba(127,255,212,0.3); }
   #hud .val { color:#fff; font-weight:bold; }
-  #weatherBadge {
-    position:absolute; top:10px; right:10px;
-    background:rgba(0,0,0,0.8); padding:8px 14px;
-    border:2px solid #ffcc00; border-radius:8px;
-    font-size:12px; z-index:10; color:#ffcc00;
-  }
+  #weatherBadge { position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.8); padding:8px 14px; border:2px solid #ffcc00; border-radius:8px; font-size:12px; z-index:10; color:#ffcc00; }
   #weatherBadge .airport { color:#7fffd4; font-weight:bold; font-size:14px; }
-
-  #panel {
-    width:340px; background:#0f1420;
-    border-left:3px solid #7fffd4;
-    padding:12px; overflow-y:auto;
-    display:flex; flex-direction:column; gap:8px;
-  }
-  #panel h2 {
-    font-size:14px; color:#7fffd4; text-align:center;
-    border-bottom:1px solid #7fffd4; padding-bottom:6px;
-    letter-spacing:2px;
-  }
+  #panel { width:340px; background:#0f1420; border-left:3px solid #7fffd4; padding:12px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+  #panel h2 { font-size:14px; color:#7fffd4; text-align:center; border-bottom:1px solid #7fffd4; padding-bottom:6px; letter-spacing:2px; }
   .viewBtns { display:flex; gap:6px; }
   .viewBtns button { flex:1; padding:8px; font-size:12px; }
   .viewBtns button.active { background:#7fffd4; color:#0a0e1a; }
   .airportBtns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; }
   .weatherBtns { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; }
-
-  button {
-    background:#1a2436; color:#7fffd4;
-    border:1px solid #7fffd4; border-radius:6px;
-    padding:9px 10px; cursor:pointer;
-    font-family:inherit; font-size:12px;
-    text-align:left; transition:all 0.15s;
-    min-height:38px;
-  }
+  button { background:#1a2436; color:#7fffd4; border:1px solid #7fffd4; border-radius:6px; padding:9px 10px; cursor:pointer; font-family:inherit; font-size:12px; text-align:left; transition:all 0.15s; min-height:38px; }
   button:hover:not(:disabled) { background:#7fffd4; color:#0a0e1a; box-shadow:0 0 12px #7fffd4; }
   button:active:not(:disabled) { transform:scale(0.96); }
   button:disabled { opacity:0.35; cursor:not-allowed; }
@@ -130,86 +49,28 @@
   button.danger:hover { background:#ff4444; color:#fff; }
   button.active { background:#2a5a3a; border-color:#4fff8a; color:#4fff8a; }
   .airportBtns button, .weatherBtns button { font-size:11px; padding:6px 4px; text-align:center; }
-
-  #log {
-    flex:1; min-height:120px;
-    background:#000; border:1px solid #2a3a4a;
-    border-radius:6px; padding:8px;
-    font-size:11px; line-height:1.5;
-    overflow-y:auto; color:#8fbc8f;
-  }
-  #log .ok   { color:#4fff8a; }
-  #log .warn { color:#ffcc00; }
-  #log .err  { color:#ff5555; }
-  #log .info { color:#4a90c2; }
-
-  .section-title {
-    font-size:11px; color:#556; margin-top:4px;
-    letter-spacing:1px; text-transform:uppercase;
-  }
-
-  #joystick {
-    display:none;
-    position:absolute; bottom:20px; left:20px;
-    width:120px; height:120px;
-    border-radius:50%;
-    background:rgba(127,255,212,0.1);
-    border:2px solid rgba(127,255,212,0.5);
-    z-index:20;
-    touch-action:none;
-  }
-  #stick {
-    position:absolute; top:50%; left:50%;
-    width:50px; height:50px;
-    margin:-25px 0 0 -25px;
-    border-radius:50%;
-    background:rgba(127,255,212,0.5);
-    border:2px solid #7fffd4;
-    transition: transform 0.05s;
-  }
-  #mobButtons {
-    display:none;
-    position:absolute; bottom:20px; right:20px;
-    flex-direction:column; gap:8px; z-index:20;
-  }
-  #mobButtons button {
-    width:70px; height:70px; border-radius:50%;
-    font-size:20px; text-align:center; padding:0;
-    background:rgba(26,36,54,0.9);
-  }
-
+  #log { flex:1; min-height:120px; background:#000; border:1px solid #2a3a4a; border-radius:6px; padding:8px; font-size:11px; line-height:1.5; overflow-y:auto; color:#8fbc8f; }
+  #log .ok { color:#4fff8a; } #log .warn { color:#ffcc00; } #log .err { color:#ff5555; } #log .info { color:#4a90c2; }
+  .section-title { font-size:11px; color:#556; margin-top:4px; letter-spacing:1px; text-transform:uppercase; }
+  #joystick { display:none; position:absolute; bottom:20px; left:20px; width:120px; height:120px; border-radius:50%; background:rgba(127,255,212,0.1); border:2px solid rgba(127,255,212,0.5); z-index:20; touch-action:none; }
+  #stick { position:absolute; top:50%; left:50%; width:50px; height:50px; margin:-25px 0 0 -25px; border-radius:50%; background:rgba(127,255,212,0.5); border:2px solid #7fffd4; transition:transform 0.05s; }
+  #mobButtons { display:none; position:absolute; bottom:20px; right:20px; flex-direction:column; gap:8px; z-index:20; }
+  #mobButtons button { width:70px; height:70px; border-radius:50%; font-size:20px; text-align:center; padding:0; background:rgba(26,36,54,0.9); }
   @media (max-width: 900px) {
-    body { flex-direction:column; }
-    #left { height:55vh; }
-    #panel {
-      width:100%; height:45vh;
-      border-left:none; border-top:3px solid #7fffd4;
-      display:grid; grid-template-columns:1fr 1fr; gap:6px;
-      padding:8px;
-    }
-    #panel h2 { grid-column:1/-1; }
-    .section-title { grid-column:1/-1; }
-    #log { grid-column:1/-1; min-height:80px; }
+    body { flex-direction:column; } #left { height:55vh; }
+    #panel { width:100%; height:45vh; border-left:none; border-top:3px solid #7fffd4; display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:8px; }
+    #panel h2 { grid-column:1/-1; } .section-title { grid-column:1/-1; } #log { grid-column:1/-1; min-height:80px; }
     button { font-size:11px; padding:8px 6px; min-height:42px; }
-    #hud { font-size:11px; padding:6px 10px; }
-    #weatherBadge { font-size:10px; padding:5px 8px; }
-    #joystick { display:block; }
-    #mobButtons { display:flex; }
-  }
-  @media (max-width: 900px) and (orientation: landscape) {
-    body { flex-direction:row; }
-    #left { height:100vh; width:55%; }
-    #panel { height:100vh; width:45%; grid-template-columns:1fr; }
+    #hud { font-size:11px; padding:6px 10px; } #weatherBadge { font-size:10px; padding:5px 8px; }
+    #joystick { display:block; } #mobButtons { display:flex; }
   }
 </style>
 </head>
 <body>
-
 <div id="left">
   <div id="view">
     <div class="runway"></div>
     <div class="ground"></div>
-
     <div id="plane">
       <svg viewBox="0 0 200 70">
         <ellipse cx="100" cy="35" rx="80" ry="14" fill="#e8e8e8" stroke="#333" stroke-width="2"/>
@@ -220,16 +81,13 @@
         <circle cx="75" cy="30" r="6" fill="#4a90c2" stroke="#333" stroke-width="1.5"/>
         <circle cx="95" cy="30" r="6" fill="#4a90c2" stroke="#333" stroke-width="1.5"/>
         <circle cx="115" cy="30" r="6" fill="#4a90c2" stroke="#333" stroke-width="1.5"/>
-        <text x="145" y="40" font-size="14" fill="#c00" font-family="Arial" font-weight="bold">✈</text>
       </svg>
     </div>
-
     <div id="cabinView">
       <div class="sky" id="sky"></div>
       <div class="horizon" id="horizon"></div>
       <div class="dash"></div>
     </div>
-
     <div id="hud">
       <div>ВЫСОТА: <span class="val" id="alt">0</span> м</div>
       <div>СКОРОСТЬ: <span class="val" id="spd">0</span> км/ч</div>
@@ -238,13 +96,11 @@
       <div>КУРС: <span class="val" id="hdg">270</span>°</div>
       <div id="status" style="margin-top:4px;color:#ffcc00">СТОЯНКА</div>
     </div>
-
     <div id="weatherBadge">
       <div class="airport" id="curAirport">🏢 SVO</div>
       <div id="curWeather">☀ Ясно</div>
       <div id="curWind">💨 0 м/с</div>
     </div>
-
     <div id="joystick"><div id="stick"></div></div>
     <div id="mobButtons">
       <button onclick="mobThrottleUp()">⬆</button>
@@ -252,15 +108,12 @@
     </div>
   </div>
 </div>
-
 <div id="panel">
   <h2>✈️ ПАНЕЛЬ ПИЛОТА v2.0</h2>
-
   <div class="viewBtns">
-    <button id="btnSide"  class="active" onclick="setView('side')">🛩 Сбоку</button>
+    <button id="btnSide" class="active" onclick="setView('side')">🛩 Сбоку</button>
     <button id="btnCabin" onclick="setView('cabin')">👨‍✈️ Из кабины</button>
   </div>
-
   <div class="section-title">🌍 Аэропорты</div>
   <div class="airportBtns">
     <button onclick="setAirport('SVO')">SVO<br>Москва</button>
@@ -270,7 +123,6 @@
     <button onclick="setAirport('CDG')">CDG<br>Париж</button>
     <button onclick="setAirport('SYD')">SYD<br>Сидней</button>
   </div>
-
   <div class="section-title">🌤 Погода</div>
   <div class="weatherBtns">
     <button onclick="setWeather('clear')">☀ Ясно</button>
@@ -280,408 +132,147 @@
     <button onclick="setWeather('dusk')">🌆 Закат</button>
     <button onclick="setWeather('night')">🌙 Ночь</button>
   </div>
-
   <div class="section-title">Двигатели</div>
   <button id="b1" onclick="startEngines()">[1] Запустить двигатели</button>
   <button id="b2" onclick="setThrottle(100)">[6] Тяга 100%</button>
-
   <div class="section-title">Взлёт</div>
   <button id="b3" onclick="releaseBrakes()">[13] Отпустить тормоза</button>
   <button id="b4" onclick="takeoff()">[15] Поднять нос (взлёт)</button>
   <button id="b5" onclick="retractGear()">[16] Убрать шасси</button>
-
   <div class="section-title">Полёт</div>
   <button id="b6" onclick="climb()">[18] Набор высоты</button>
   <button id="b7" onclick="descend()">[19] Снижение</button>
   <button id="b8" onclick="toggleAutopilot()">[22] Автопилот</button>
-
   <div class="section-title">Посадка</div>
-  <button id="b9"  onclick="land()">[32] Касание полосы</button>
+  <button id="b9" onclick="land()">[32] Касание полосы</button>
   <button id="b10" onclick="brake()">[33] Торможение</button>
-
   <div class="section-title">Аварии</div>
   <button class="danger" onclick="alarm()">[39] ⚠️ Аварийная посадка</button>
   <button class="danger" onclick="reset()">[48] Сброс тренажёра</button>
-
   <div class="section-title">Журнал полёта</div>
   <div id="log"></div>
-</div>
-
-<script>
- /* ==========================================================
-   ✈️ СИМУЛЯТОР ПИЛОТА v2.0 — ЛОГИКА
-   ========================================================== */
-
+       </div>
+     <script>
 const AIRPORTS = {
-  SVO: { name:'Шереметьево',    city:'Москва',    hdg:270, weather:'clear', wind:3  },
-  JFK: { name:'Кеннеди',        city:'Нью-Йорк',  hdg:130, weather:'rain',  wind:8  },
-  DXB: { name:'Дубай',          city:'Дубай',     hdg:300, weather:'clear', wind:5  },
-  NRT: { name:'Нарита',         city:'Токио',     hdg:160, weather:'fog',   wind:2  },
-  CDG: { name:'Шарль де Голль', city:'Париж',     hdg:90,  weather:'dusk',  wind:6  },
-  SYD: { name:'Кингсфорд',      city:'Сидней',    hdg:250, weather:'snow',  wind:10 }
+  SVO:{name:'Шереметьево',city:'Москва',hdg:270,weather:'clear',wind:3},
+  JFK:{name:'Кеннеди',city:'Нью-Йорк',hdg:130,weather:'rain',wind:8},
+  DXB:{name:'Дубай',city:'Дубай',hdg:300,weather:'clear',wind:5},
+  NRT:{name:'Нарита',city:'Токио',hdg:160,weather:'fog',wind:2},
+  CDG:{name:'Шарль де Голль',city:'Париж',hdg:90,weather:'dusk',wind:6},
+  SYD:{name:'Кингсфорд',city:'Сидней',hdg:250,weather:'snow',wind:10}
 };
-
-const WEATHER_LABEL = {
-  clear:'☀ Ясно', rain:'🌧 Дождь', snow:'❄ Снег',
-  fog:'🌫 Туман', dusk:'🌆 Закат', night:'🌙 Ночь'
-};
-
-const S = {
-  engines:false, throttle:0, brakes:true,
-  speed:0, alt:0, fuel:100, rpm:0,
-  gear:true, flaps:0, autopilot:false,
-  airborne:false, heading:270,
-  view:'side', airport:'SVO', weather:'clear', wind:3
-};
-
-let audioCtx=null, engineOsc=null, engineGain=null, alarmOsc=null, windGain=null;
-
-function initAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
+const WEATHER_LABEL = {clear:'☀ Ясно',rain:'🌧 Дождь',snow:'❄ Снег',fog:'🌫 Туман',dusk:'🌆 Закат',night:'🌙 Ночь'};
+const S = {engines:false,throttle:0,brakes:true,speed:0,alt:0,fuel:100,rpm:0,gear:true,flaps:0,autopilot:false,airborne:false,heading:270,view:'side',airport:'SVO',weather:'clear',wind:3};
+let audioCtx=null,engineOsc=null,engineGain=null,alarmOsc=null,windGain=null;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();}
+function startEngineSound(){
+  initAudio(); if(engineOsc)return;
+  engineOsc=audioCtx.createOscillator(); engineGain=audioCtx.createGain();
+  engineOsc.type='sawtooth'; engineOsc.frequency.value=60; engineGain.gain.value=0;
+  engineOsc.connect(engineGain).connect(audioCtx.destination); engineOsc.start();
+  const bs=2*audioCtx.sampleRate; const nb=audioCtx.createBuffer(1,bs,audioCtx.sampleRate);
+  const o=nb.getChannelData(0); for(let i=0;i<bs;i++)o[i]=Math.random()*2-1;
+  const n=audioCtx.createBufferSource(); n.buffer=nb; n.loop=true;
+  const f=audioCtx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=400;
+  windGain=audioCtx.createGain(); windGain.gain.value=0;
+  n.connect(f).connect(windGain).connect(audioCtx.destination); n.start();
 }
-
-function startEngineSound() {
-  initAudio();
-  if (engineOsc) return;
-  engineOsc = audioCtx.createOscillator();
-  engineGain = audioCtx.createGain();
-  engineOsc.type = 'sawtooth';
-  engineOsc.frequency.value = 60;
-  engineGain.gain.value = 0;
-  engineOsc.connect(engineGain).connect(audioCtx.destination);
-  engineOsc.start();
-
-  const bufferSize = 2 * audioCtx.sampleRate;
-  const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-  const output = noiseBuffer.getChannelData(0);
-  for (let i=0;i<bufferSize;i++) output[i] = Math.random()*2-1;
-  const noise = audioCtx.createBufferSource();
-  noise.buffer = noiseBuffer; noise.loop = true;
-  const filter = audioCtx.createBiquadFilter();
-  filter.type='lowpass'; filter.frequency.value=400;
-  windGain = audioCtx.createGain(); windGain.gain.value=0;
-  noise.connect(filter).connect(windGain).connect(audioCtx.destination);
-  noise.start();
+function updateEngineSound(){
+  if(!engineOsc)return;
+  const t=S.engines?(40+S.rpm*1.5):0;
+  engineOsc.frequency.setTargetAtTime(t,audioCtx.currentTime,0.2);
+  engineGain.gain.setTargetAtTime(S.engines?(0.02+S.rpm*0.001):0,audioCtx.currentTime,0.2);
+  if(windGain)windGain.gain.setTargetAtTime(S.wind*0.005,audioCtx.currentTime,0.5);
 }
-
-function updateEngineSound() {
-  if (!engineOsc) return;
-  const target = S.engines ? (40 + S.rpm*1.5) : 0;
-  engineOsc.frequency.setTargetAtTime(target, audioCtx.currentTime, 0.2);
-  engineGain.gain.setTargetAtTime(S.engines ? (0.02 + S.rpm*0.001) : 0, audioCtx.currentTime, 0.2);
-  if (windGain) windGain.gain.setTargetAtTime(S.wind*0.005, audioCtx.currentTime, 0.5);
-}
-
-function playAlarm() {
-  initAudio();
-  if (alarmOsc) return;
-  alarmOsc = audioCtx.createOscillator();
-  const g = audioCtx.createGain(); g.gain.value=0.05;
+function playAlarm(){
+  initAudio(); if(alarmOsc)return;
+  alarmOsc=audioCtx.createOscillator(); const g=audioCtx.createGain(); g.gain.value=0.05;
   alarmOsc.type='square'; alarmOsc.frequency.value=800;
-  alarmOsc.connect(g).connect(audioCtx.destination);
-  alarmOsc.start();
-  let up=true;
-  const iv=setInterval(()=>{
-    if(!alarmOsc){clearInterval(iv);return;}
-    alarmOsc.frequency.setValueAtTime(up?800:500, audioCtx.currentTime);
-    up=!up;
-  },300);
+  alarmOsc.connect(g).connect(audioCtx.destination); alarmOsc.start();
+  let up=true; const iv=setInterval(()=>{if(!alarmOsc){clearInterval(iv);return;}alarmOsc.frequency.setValueAtTime(up?800:500,audioCtx.currentTime);up=!up;},300);
 }
-
-function stopAlarm(){ if(alarmOsc){alarmOsc.stop();alarmOsc=null;} }
-
-function log(msg, cls='') {
-  const el = document.getElementById('log');
-  const p = document.createElement('div');
-  if (cls) p.className = cls;
-  p.textContent = '> ' + msg;
-  el.appendChild(p);
-  el.scrollTop = el.scrollHeight;
+function stopAlarm(){if(alarmOsc){alarmOsc.stop();alarmOsc=null;}}
+function log(m,c=''){const el=document.getElementById('log');const p=document.createElement('div');if(c)p.className=c;p.textContent='> '+m;el.appendChild(p);el.scrollTop=el.scrollHeight;}
+function setView(v){S.view=v;document.getElementById('cabinView').classList.toggle('active',v==='cabin');document.getElementById('btnSide').classList.toggle('active',v==='side');document.getElementById('btnCabin').classList.toggle('active',v==='cabin');}
+function setAirport(code){
+  S.airport=code; const ap=AIRPORTS[code]; S.heading=ap.hdg; S.wind=ap.wind; setWeather(ap.weather);
+  document.getElementById('curAirport').textContent='🏢 '+code+' — '+ap.city;
+  document.getElementById('curWind').textContent='💨 '+ap.wind+' м/с';
+  log('Аэропорт: '+ap.name+' ('+code+'), курс '+ap.hdg+'°','info');
+  updateStatus('НА ЗЕМЛЕ — '+code);
 }
-
-function setView(v) {
-  S.view = v;
-  document.getElementById('cabinView').classList.toggle('active', v==='cabin');
-  document.getElementById('btnSide').classList.toggle('active', v==='side');
-  document.getElementById('btnCabin').classList.toggle('active', v==='cabin');
-}
-
-function setAirport(code) {
-  S.airport = code;
-  const ap = AIRPORTS[code];
-  S.heading = ap.hdg;
-  S.wind = ap.wind;
-  setWeather(ap.weather);
-  document.getElementById('curAirport').textContent = '🏢 ' + code + ' — ' + ap.city;
-  document.getElementById('curWind').textContent = '💨 ' + ap.wind + ' м/с';
-  log(`Выбран аэропорт: ${ap.name} (${code}), курс ${ap.hdg}°`, 'info');
-  updateStatus('НА ЗЕМЛЕ — ' + code);
-}
-
-function setWeather(w) {
-  S.weather = w;
-  const view = document.getElementById('view');
-  const sky  = document.getElementById('sky');
-
-  ['night','rain','snow','dusk','fog'].forEach(c=>{
-    view.classList.remove(c); sky.classList.remove(c);
-  });
+function setWeather(w){
+  S.weather=w; const view=document.getElementById('view'); const sky=document.getElementById('sky');
+  ['night','rain','snow','dusk','fog'].forEach(c=>{view.classList.remove(c);sky.classList.remove(c);});
   view.querySelectorAll('.raindrop,.snowflake,.windLine').forEach(e=>e.remove());
-
-  if (w==='night') { view.classList.add('night'); sky.classList.add('night'); }
-  else if (w!=='clear') { view.classList.add(w); }
-
-  if (w==='rain') spawnRain();
-  if (w==='snow') spawnSnow();
-  if (w==='fog' || w==='dusk') spawnWind();
-
-  document.getElementById('curWeather').textContent = WEATHER_LABEL[w];
-  log(`Погода: ${WEATHER_LABEL[w]}`, 'info');
+  if(w==='night'){view.classList.add('night');sky.classList.add('night');} else if(w!=='clear'){view.classList.add(w);}
+  if(w==='rain')spawnRain(); if(w==='snow')spawnSnow(); if(w==='fog'||w==='dusk')spawnWind();
+  document.getElementById('curWeather').textContent=WEATHER_LABEL[w];
+  log('Погода: '+WEATHER_LABEL[w],'info');
 }
-
-function spawnRain() {
-  const view = document.getElementById('view');
-  for (let i=0;i<40;i++) {
-    const d = document.createElement('div');
-    d.className='raindrop';
-    d.style.left = Math.random()*100 + '%';
-    d.style.top = '-20px';
-    d.style.animationDuration = (0.3+Math.random()*0.3)+'s';
-    d.style.animationDelay = Math.random()+'s';
-    view.appendChild(d);
-  }
-}
-
-function spawnSnow() {
-  const view = document.getElementById('view');
-  for (let i=0;i<50;i++) {
-    const d = document.createElement('div');
-    d.className='snowflake';
-    d.style.left = Math.random()*100 + '%';
-    d.style.top = '-10px';
-    d.style.animationDuration = (2+Math.random()*3)+'s';
-    d.style.animationDelay = Math.random()*3+'s';
-    view.appendChild(d);
-  }
-}
-
-function spawnWind() {
-  const view = document.getElementById('view');
-  for (let i=0;i<15;i++) {
-    const d = document.createElement('div');
-    d.className='windLine';
-    d.style.left = '-100px';
-    d.style.top = Math.random()*100 + '%';
-    d.style.width = (30+Math.random()*60)+'px';
-    d.style.animationDuration = (0.5+Math.random())+'s';
-    d.style.animationDelay = Math.random()+'s';
-    view.appendChild(d);
-  }
-}
-
-function startEngines() {
-  if (S.engines) return log('Двигатели уже запущены','warn');
-  S.engines=true; S.rpm=20; startEngineSound();
-  log('Двигатель №1: ЗАПУЩЕН ✔','ok');
-  log('Двигатель №2: ЗАПУЩЕН ✔','ok');
-  updateStatus('ГОТОВ К ВЗЛЁТУ');
-}
-
-function setThrottle(v) {
-  if (!S.engines) return log('Сначала запусти двигатели! [1]','err');
-  S.throttle=v; S.rpm=v;
-  log(`Тяга ${v}% — двигатели ревут 🔊`,'ok');
-  updateStatus('РАЗГОН');
-}
-
-function releaseBrakes() {
-  if (!S.brakes) return log('Тормоза уже отпущены','warn');
-  S.brakes=false; log('ТОРМОЗА ОТПУЩЕНЫ','ok');
-}
-
-function takeoff() {
-  if (!S.engines)  return log('Двигатели не запущены!','err');
-  if (S.brakes)    return log('Сначала отпусти тормоза! [13]','err');
-  if (S.speed<150) return log('Слишком маленькая скорость для взлёта!','err');
-  S.airborne=true;
-  log('🛫 НОС ВВЕРХ! Отрыв от земли!','ok');
-  updateStatus('ВЗЛЁТ');
-}
-
-function retractGear() {
-  if (!S.airborne) return log('Мы ещё на земле!','warn');
-  S.gear=false; log('ШАССИ УБРАНО','ok');
-}
-
-function climb() {
-  if (!S.airborne) return log('Сначала взлети!','err');
-  S.alt+=500; log(`Набор высоты... ${S.alt} м`,'ok');
-}
-
-function descend() {
-  if (!S.airborne) return log('Мы на земле','warn');
-  S.alt=Math.max(0,S.alt-500); log(`Снижение... ${S.alt} м`,'ok');
-}
-
-function toggleAutopilot() {
-  S.autopilot=!S.autopilot;
-  log(S.autopilot?'АВТОПИЛОТ ВКЛЮЧЁН':'АВТОПИЛОТ ВЫКЛЮЧЕН','ok');
-  updateStatus(S.autopilot?'АВТОПИЛОТ':'РУЧНОЕ УПРАВЛЕНИЕ');
-}
-
-function land() {
-  if (!S.airborne) return log('Мы не в воздухе','warn');
-  if (S.alt>500)   return log('Слишком высоко! Сначала снижайся [19]','err');
-  S.alt=0; S.airborne=false; S.gear=true;
-  log('🛬 КАСАНИЕ... МЯГКО! ✔','ok');
-  updateStatus('НА ЗЕМЛЕ');
-}
-
-function brake() {
-  S.speed=0; S.throttle=0; S.rpm=20;
-  log('ТОРМОЖЕНИЕ... СТОП','ok');
-  updateStatus('СТОЯНКА');
-}
-
-function alarm() {
-  log('⚠️ АВАРИЙНАЯ ПОСАДКА ⚠️','err');
-  updateStatus('⚠️ АВАРИЯ');
-  playAlarm();
-  setTimeout(()=>{
-    stopAlarm();
-    S.alt=0; S.speed=0; S.airborne=false;
-    log('Аварийная посадка выполнена ✔','warn');
-    updateStatus('НА ЗЕМЛЕ');
-  },3000);
-}
-
-function reset() {
-  stopAlarm();
-  Object.assign(S,{
-    engines:false, throttle:0, brakes:true, speed:0, alt:0,
-    fuel:100, rpm:0, gear:true, flaps:0, autopilot:false, airborne:false
-  });
-  document.getElementById('log').innerHTML='';
-  log('ТРЕНАЖЁР СБРОШЕН','ok');
-  updateStatus('СТОЯНКА');
-}
-
-function updateStatus(t) {
-  const el=document.getElementById('status');
-  el.textContent=t;
-  el.style.color =
-    t.includes('⚠️') ? '#ff4444' :
-    (t.includes('ГОТОВ')||t.includes('ВЗЛЁТ')) ? '#4fff8a' : '#ffcc00';
-}
-
-const joy   = document.getElementById('joystick');
-const stick = document.getElementById('stick');
-let joyActive=false, joyX=0, joyY=0;
-
-function getJoyCenter() {
-  const r = joy.getBoundingClientRect();
-  return { x:r.left+r.width/2, y:r.top+r.height/2, R:r.width/2-25 };
-}
-
-function moveStick(dx,dy) {
-  const c = getJoyCenter();
-  const dist = Math.hypot(dx,dy);
-  const clamped = Math.min(dist, c.R);
-  const ang = Math.atan2(dy,dx);
-  const x = Math.cos(ang)*clamped, y = Math.sin(ang)*clamped;
-  stick.style.transform = `translate(${x}px, ${y}px)`;
-  joyX = x/c.R; joyY = y/c.R;
-}
-
-function resetStick() {
-  stick.style.transform='translate(0,0)';
-  joyX=0; joyY=0;
-}
-
-function handleJoyMove(e) {
-  if (!joyActive) return;
-  const t = e.touches ? e.touches[0] : e;
-  const c = getJoyCenter();
-  moveStick(t.clientX-c.x, t.clientY-c.y);
-  e.preventDefault();
-}
-
-joy.addEventListener('touchstart', e=>{ joyActive=true; handleJoyMove(e); }, {passive:false});
-joy.addEventListener('mousedown',  e=>{ joyActive=true; handleJoyMove(e); });
-document.addEventListener('touchmove', handleJoyMove, {passive:false});
-document.addEventListener('mousemove', handleJoyMove);
-document.addEventListener('touchend', ()=>{ joyActive=false; resetStick(); });
-document.addEventListener('mouseup',  ()=>{ joyActive=false; resetStick(); });
-
-function mobThrottleUp()   { setThrottle(Math.min(100, S.throttle+25)); }
-function mobThrottleDown() { setThrottle(Math.max(0,   S.throttle-25)); }
-
-setInterval(() => {
-  if (joyY < -0.3 && S.airborne) S.alt += 15;
-  if (joyY >  0.3 && S.airborne) S.alt = Math.max(0, S.alt-15);
-  if (joyX !== 0) S.heading = (S.heading + joyX*0.8 + 360) % 360;
-
-  const weatherFactor = {
-    clear:1, rain:0.7, snow:0.4, fog:0.6, dusk:0.9, night:0.85
-  }[S.weather] || 1;
-  const windEffect = S.wind * 0.5;
-
-  if (S.engines && !S.brakes && !S.airborne && S.throttle>0) {
-    S.speed = Math.min(300, S.speed + S.throttle*0.08*weatherFactor - windEffect*0.1);
-    S.fuel  = Math.max(0, S.fuel-0.03);
-  }
-
-  if (S.airborne) {
-    S.speed = Math.min(900, S.speed + S.throttle*0.05*weatherFactor);
-    if (!S.autopilot) S.alt = Math.max(0, S.alt + (S.throttle-50)*0.3);
-    S.fuel = Math.max(0, S.fuel-0.05);
-    if (S.alt<=0 && S.speed>250) {
-      log('⚠️ ЖЁСТКАЯ ПОСАДКА!','err');
-      S.airborne=false;
-    }
-  }
-
-  if (!S.airborne && S.throttle===0 && S.speed>0) {
-    S.speed = Math.max(0, S.speed-0.5);
-  }
-
-  if (S.fuel<=0 && S.engines) {
-    S.engines=false; S.rpm=0; S.throttle=0;
-    log('⚠️ ТОПЛИВО КОНЧИЛОСЬ!','err');
-    updateStatus('⚠️ ОТКАЗ ДВИГАТЕЛЕЙ');
-  }
-
+function spawnRain(){const v=document.getElementById('view');for(let i=0;i<40;i++){const d=document.createElement('div');d.className='raindrop';d.style.left=Math.random()*100+'%';d.style.top='-20px';d.style.animationDuration=(0.3+Math.random()*0.3)+'s';d.style.animationDelay=Math.random()+'s';v.appendChild(d);}}
+function spawnSnow(){const v=document.getElementById('view');for(let i=0;i<50;i++){const d=document.createElement('div');d.className='snowflake';d.style.left=Math.random()*100+'%';d.style.top='-10px';d.style.animationDuration=(2+Math.random()*3)+'s';d.style.animationDelay=Math.random()*3+'s';v.appendChild(d);}}
+function spawnWind(){const v=document.getElementById('view');for(let i=0;i<15;i++){const d=document.createElement('div');d.className='windLine';d.style.left='-100px';d.style.top=Math.random()*100+'%';d.style.width=(30+Math.random()*60)+'px';d.style.animationDuration=(0.5+Math.random())+'s';d.style.animationDelay=Math.random()+'s';v.appendChild(d);}}
+function startEngines(){if(S.engines)return log('Двигатели уже запущены','warn');S.engines=true;S.rpm=20;startEngineSound();log('Двигатель №1: ЗАПУЩЕН ✔','ok');log('Двигатель №2: ЗАПУЩЕН ✔','ok');updateStatus('ГОТОВ К ВЗЛЁТУ');}
+function setThrottle(v){if(!S.engines)return log('Сначала запусти двигатели! [1]','err');S.throttle=v;S.rpm=v;log('Тяга '+v+'% — двигатели ревут 🔊','ok');updateStatus('РАЗГОН');}
+function releaseBrakes(){if(!S.brakes)return log('Тормоза уже отпущены','warn');S.brakes=false;log('ТОРМОЗА ОТПУЩЕНЫ','ok');}
+function takeoff(){if(!S.engines)return log('Двигатели не запущены!','err');if(S.brakes)return log('Сначала отпусти тормоза! [13]','err');if(S.speed<150)return log('Слишком маленькая скорость!','err');S.airborne=true;log('🛫 НОС ВВЕРХ! Отрыв от земли!','ok');updateStatus('ВЗЛЁТ');}
+function retractGear(){if(!S.airborne)return log('Мы ещё на земле!','warn');S.gear=false;log('ШАССИ УБРАНО','ok');}
+function climb(){if(!S.airborne)return log('Сначала взлети!','err');S.alt+=500;log('Набор высоты... '+S.alt+' м','ok');}
+function descend(){if(!S.airborne)return log('Мы на земле','warn');S.alt=Math.max(0,S.alt-500);log('Снижение... '+S.alt+' м','ok');}
+function toggleAutopilot(){S.autopilot=!S.autopilot;log(S.autopilot?'АВТОПИЛОТ ВКЛЮЧЁН':'АВТОПИЛОТ ВЫКЛЮЧЕН','ok');updateStatus(S.autopilot?'АВТОПИЛОТ':'РУЧНОЕ УПРАВЛЕНИЕ');}
+function land(){if(!S.airborne)return log('Мы не в воздухе','warn');if(S.alt>500)return log('Слишком высоко!','err');S.alt=0;S.airborne=false;S.gear=true;log('🛬 КАСАНИЕ... МЯГКО! ✔','ok');updateStatus('НА ЗЕМЛЕ');}
+function brake(){S.speed=0;S.throttle=0;S.rpm=20;log('ТОРМОЖЕНИЕ... СТОП','ok');updateStatus('СТОЯНКА');}
+function alarm(){log('⚠️ АВАРИЙНАЯ ПОСАДКА ⚠️','err');updateStatus('⚠️ АВАРИЯ');playAlarm();setTimeout(()=>{stopAlarm();S.alt=0;S.speed=0;S.airborne=false;log('Аварийная посадка выполнена ✔','warn');updateStatus('НА ЗЕМЛЕ');},3000);}
+function reset(){stopAlarm();Object.assign(S,{engines:false,throttle:0,brakes:true,speed:0,alt:0,fuel:100,rpm:0,gear:true,flaps:0,autopilot:false,airborne:false});document.getElementById('log').innerHTML='';log('ТРЕНАЖЁР СБРОШЕН','ok');updateStatus('СТОЯНКА');}
+function updateStatus(t){const el=document.getElementById('status');el.textContent=t;el.style.color=t.includes('⚠️')?'#ff4444':((t.includes('ГОТОВ')||t.includes('ВЗЛЁТ'))?'#4fff8a':'#ffcc00');}
+const joy=document.getElementById('joystick'); const stick=document.getElementById('stick');
+let joyActive=false,joyX=0,joyY=0;
+function getJoyCenter(){const r=joy.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2,R:r.width/2-25};}
+function moveStick(dx,dy){const c=getJoyCenter();const dist=Math.hypot(dx,dy);const cl=Math.min(dist,c.R);const a=Math.atan2(dy,dx);const x=Math.cos(a)*cl,y=Math.sin(a)*cl;stick.style.transform='translate('+x+'px,'+y+'px)';joyX=x/c.R;joyY=y/c.R;}
+function resetStick(){stick.style.transform='translate(0,0)';joyX=0;joyY=0;}
+function handleJoyMove(e){if(!joyActive)return;const t=e.touches?e.touches[0]:e;const c=getJoyCenter();moveStick(t.clientX-c.x,t.clientY-c.y);e.preventDefault();}
+joy.addEventListener('touchstart',e=>{joyActive=true;handleJoyMove(e);},{passive:false});
+joy.addEventListener('mousedown',e=>{joyActive=true;handleJoyMove(e);});
+document.addEventListener('touchmove',handleJoyMove,{passive:false});
+document.addEventListener('mousemove',handleJoyMove);
+document.addEventListener('touchend',()=>{joyActive=false;resetStick();});
+document.addEventListener('mouseup',()=>{joyActive=false;resetStick();});
+function mobThrottleUp(){setThrottle(Math.min(100,S.throttle+25));}
+function mobThrottleDown(){setThrottle(Math.max(0,S.throttle-25));}
+setInterval(()=>{
+  if(joyY<-0.3&&S.airborne)S.alt+=15;
+  if(joyY>0.3&&S.airborne)S.alt=Math.max(0,S.alt-15);
+  if(joyX!==0)S.heading=(S.heading+joyX*0.8+360)%360;
+  const wf={clear:1,rain:0.7,snow:0.4,fog:0.6,dusk:0.9,night:0.85}[S.weather]||1;
+  const we=S.wind*0.5;
+  if(S.engines&&!S.brakes&&!S.airborne&&S.throttle>0){S.speed=Math.min(300,S.speed+S.throttle*0.08*wf-we*0.1);S.fuel=Math.max(0,S.fuel-0.03);}
+  if(S.airborne){S.speed=Math.min(900,S.speed+S.throttle*0.05*wf);if(!S.autopilot)S.alt=Math.max(0,S.alt+(S.throttle-50)*0.3);S.fuel=Math.max(0,S.fuel-0.05);if(S.alt<=0&&S.speed>250){log('⚠️ ЖЁСТКАЯ ПОСАДКА!','err');S.airborne=false;}}
+  if(!S.airborne&&S.throttle===0&&S.speed>0)S.speed=Math.max(0,S.speed-0.5);
+  if(S.fuel<=0&&S.engines){S.engines=false;S.rpm=0;S.throttle=0;log('⚠️ ТОПЛИВО КОНЧИЛОСЬ!','err');updateStatus('⚠️ ОТКАЗ ДВИГАТЕЛЕЙ');}
   updateEngineSound();
-
-  document.getElementById('alt').textContent  = Math.round(S.alt);
-  document.getElementById('spd').textContent  = Math.round(S.speed);
-  document.getElementById('rpm').textContent  = Math.round(S.rpm);
-  document.getElementById('fuel').textContent = Math.round(S.fuel);
-  document.getElementById('hdg').textContent  = Math.round(S.heading);
-
-  const plane = document.getElementById('plane');
-  const flyAlt = Math.min(400, S.alt*0.4);
-  plane.style.bottom = (68 + flyAlt) + 'px';
-  plane.style.left   = S.airborne ? '30%' : (80 + S.speed*0.4) + 'px';
-  const tilt = S.airborne ? -12 : (S.speed>100 ? -5 : 0);
-  plane.style.transform = `rotate(${tilt}deg)`;
-
-  const horizon = document.getElementById('horizon');
-  const sky = document.getElementById('sky');
-  const horizPos = 50 + (S.alt>0 ? Math.min(30, S.alt/300) : -20);
-  horizon.style.top = horizPos + '%';
-  sky.classList.toggle('ground', S.alt<=0);
-  if (S.weather!=='night') sky.classList.toggle('night', S.alt>3000);
-
-  document.getElementById('b8').classList.toggle('active', S.autopilot);
-  document.getElementById('b5').disabled = S.gear===false;
-
-}, 100);
-
+  document.getElementById('alt').textContent=Math.round(S.alt);
+  document.getElementById('spd').textContent=Math.round(S.speed);
+  document.getElementById('rpm').textContent=Math.round(S.rpm);
+  document.getElementById('fuel').textContent=Math.round(S.fuel);
+  document.getElementById('hdg').textContent=Math.round(S.heading);
+  const plane=document.getElementById('plane');
+  const fa=Math.min(400,S.alt*0.4);
+  plane.style.bottom=(68+fa)+'px';
+  plane.style.left=S.airborne?'30%':(80+S.speed*0.4)+'px';
+  const tilt=S.airborne?-12:(S.speed>100?-5:0);
+  plane.style.transform='rotate('+tilt+'deg)';
+  const hz=document.getElementById('horizon'); const sk=document.getElementById('sky');
+  const hp=50+(S.alt>0?Math.min(30,S.alt/300):-20);
+  hz.style.top=hp+'%';
+  sk.classList.toggle('ground',S.alt<=0);
+  if(S.weather!=='night')sk.classList.toggle('night',S.alt>3000);
+  document.getElementById('b8').classList.toggle('active',S.autopilot);
+  document.getElementById('b5').disabled=S.gear===false;
+},100);
 log('Добро пожаловать, пилот! v2.0','ok');
 log('Выбери аэропорт и погоду, затем жми [1]','warn');
 setAirport('SVO');
 </script>
 </body>
-</html>
+</html>  
